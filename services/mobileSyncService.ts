@@ -162,6 +162,184 @@ export const belongsToBuilding = (row: any, buildingId: string, buildingName?: s
 };
 
 /**
+ * Derives MIME type from a file name extension.
+ */
+export const getMimeTypeFromFilename = (filename: string): string => {
+    if (!filename) return 'application/octet-stream';
+    const ext = filename.toLowerCase().split('.').pop() || '';
+    switch (ext) {
+        case 'jpg':
+        case 'jpeg':
+            return 'image/jpeg';
+        case 'png':
+            return 'image/png';
+        case 'webp':
+            return 'image/webp';
+        case 'gif':
+            return 'image/gif';
+        case 'svg':
+            return 'image/svg+xml';
+        case 'pdf':
+            return 'application/pdf';
+        case 'csv':
+            return 'text/csv';
+        case 'json':
+            return 'application/json';
+        case 'txt':
+            return 'text/plain';
+        case 'doc':
+            return 'application/msword';
+        case 'docx':
+            return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+        case 'xls':
+            return 'application/vnd.ms-excel';
+        case 'xlsx':
+            return 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+        case 'dwg':
+            return 'application/acad';
+        default:
+            return 'application/octet-stream';
+    }
+};
+
+/**
+ * Intelligently determines or preserves the folder category for building documents,
+ * preventing them from being dumped into a generic "all/קבצים מצורפים" category.
+ */
+export const getFolderCategoryForDocument = (doc: any, filePath?: string): string => {
+    // 1. Explicit folder or category from mobile database
+    const explicit = getRowVal(doc, 'category', 'group', 'folder', 'folderName', 'folder_name', 'section', 'categoryName', 'category_name', 'docType', 'doc_type', 'type');
+    if (explicit && typeof explicit === 'string') {
+        const trimmed = explicit.trim();
+        const lower = trimmed.toLowerCase();
+        if (trimmed && !['כללי', 'general', 'default', 'files', 'file', 'קבצים', 'קבצים מצורפים', 'מסמכי ארכיון', 'other'].includes(lower)) {
+            return trimmed;
+        }
+    }
+
+    // 2. Subfolder from zip file path (e.g. files/חוזים והסכמים/lease.pdf -> "חוזים והסכמים")
+    const pathStr = String(filePath || getRowVal(doc, 'filePath', 'file_path', 'path', 'url') || '');
+    if (pathStr && !pathStr.startsWith('data:')) {
+        const parts = pathStr.split('/').filter(Boolean);
+        if (parts.length >= 3 && (parts[0] === 'files' || parts[0] === 'documents')) {
+            const folderPart = parts[1].trim();
+            const lowerFolder = folderPart.toLowerCase();
+            if (!['images', 'photos', 'temp', 'cache', 'all', 'files', 'documents'].includes(lowerFolder)) {
+                return folderPart;
+            }
+        }
+    }
+
+    // 3. Smart Hebrew classification based on file name or title
+    const name = String(getRowVal(doc, 'name', 'title', 'fileName', 'file_name', 'docName', 'doc_name') || pathStr.split('/').pop() || '').toLowerCase();
+    
+    if (name.includes('ביטוח') || name.includes('insurance') || name.includes('פוליס') || name.includes('policy')) {
+        return 'ביטוחים';
+    }
+    if (name.includes('חוזה') || name.includes('הסכם') || name.includes('שכירות') || name.includes('contract') || name.includes('agreement') || name.includes('lease')) {
+        return 'חוזים והסכמים';
+    }
+    if (name.includes('תוכני') || name.includes('תכני') || name.includes('היתר') || name.includes('שרטוט') || name.includes('גרמושק') || name.includes('plan') || name.includes('blueprint') || name.includes('permit')) {
+        return 'תוכניות והיתרים';
+    }
+    if (name.includes('אישור') || name.includes('טופס 4') || name.includes('כיבוי') || name.includes('בטיחות') || name.includes('תקן') || name.includes('approval') || name.includes('license') || name.includes('cert')) {
+        return 'אישורים ותקנים';
+    }
+    if (name.includes('דוח') || name.includes('דו"ח') || name.includes('בדק') || name.includes('מהנדס') || name.includes('report') || name.includes('audit')) {
+        return 'דוחות ובדיקות';
+    }
+    if (name.includes('פרוטוקול') || name.includes('אסיפ') || name.includes('protocol') || name.includes('meeting')) {
+        return 'פרוטוקולים ואסיפות';
+    }
+    if (name.includes('תחזוק') || name.includes('מעלית') || name.includes('משאב') || name.includes('גנרטור') || name.includes('מערכת') || name.includes('maintenance')) {
+        return 'תחזוקה ומערכות';
+    }
+    if (name.includes('מכתב') || name.includes('התכתב') || name.includes('הודע') || name.includes('letter') || name.includes('notice')) {
+        return 'התכתבויות ומכתבים';
+    }
+
+    if (explicit && typeof explicit === 'string' && explicit.trim()) {
+        return explicit.trim();
+    }
+
+    return 'מסמכים כלליים';
+};
+
+/**
+ * Checks if a document or file attachment belongs to a specific entity
+ * (Tenants, Issues/Problems, Invoices, Workers, System Logs, Reports, Forms, Inventory)
+ * so it won't be dumped into the building files section!
+ */
+export const isEntitySpecificFile = (doc: any, filePath?: string): { isSpecific: boolean; targetSection?: string; targetId?: string } => {
+    if (!doc || typeof doc !== 'object') return { isSpecific: false };
+
+    const targetType = String(
+        getRowVal(doc, 'targetType', 'target_type', 'entityType', 'entity_type', 'module', 'section', 'table', 'tableName', 'table_name') || ''
+    ).toLowerCase();
+
+    const tenantId = String(getRowVal(doc, 'tenantId', 'tenant_id') || '');
+    const issueId = String(getRowVal(doc, 'issueId', 'issue_id', 'problemId', 'problem_id', 'defectId', 'defect_id') || '');
+    const invoiceId = String(getRowVal(doc, 'invoiceId', 'invoice_id', 'receiptId', 'receipt_id') || '');
+    const workerId = String(getRowVal(doc, 'workerId', 'worker_id', 'contractorId', 'contractor_id') || '');
+    const reportId = String(getRowVal(doc, 'reportId', 'report_id') || '');
+    const systemId = String(getRowVal(doc, 'systemId', 'system_id', 'systemLogId', 'system_log_id') || '');
+    const formId = String(getRowVal(doc, 'formId', 'form_id', 'filledFormId', 'filled_form_id') || '');
+    const inventoryId = String(getRowVal(doc, 'inventoryId', 'inventory_id', 'itemId', 'item_id') || '');
+    const targetId = String(getRowVal(doc, 'targetId', 'target_id', 'entityId', 'entity_id') || '');
+
+    if (tenantId || ['tenant', 'tenants', 'resident', 'residents', 'דייר', 'דיירים'].includes(targetType)) {
+        return { isSpecific: true, targetSection: 'tenants', targetId: tenantId || targetId };
+    }
+    if (issueId || ['issue', 'issues', 'problem', 'problems', 'fault', 'faults', 'defect', 'defects', 'תקלה', 'תקלות'].includes(targetType)) {
+        return { isSpecific: true, targetSection: 'issues', targetId: issueId || targetId };
+    }
+    if (invoiceId || ['invoice', 'invoices', 'receipt', 'receipts', 'bill', 'bills', 'expense', 'expenses', 'חשבונית', 'חשבוניות'].includes(targetType)) {
+        return { isSpecific: true, targetSection: 'invoices', targetId: invoiceId || targetId };
+    }
+    if (workerId || ['worker', 'workers', 'contractor', 'contractors', 'technician', 'technicians', 'עובד', 'עובדים'].includes(targetType)) {
+        return { isSpecific: true, targetSection: 'workers', targetId: workerId || targetId };
+    }
+    if (reportId || ['report', 'reports', 'דוח', 'דוחות'].includes(targetType)) {
+        return { isSpecific: true, targetSection: 'reports', targetId: reportId || targetId };
+    }
+    if (systemId || ['system', 'systems', 'system_log', 'system_logs', 'מערכת', 'מערכות'].includes(targetType)) {
+        return { isSpecific: true, targetSection: 'systems', targetId: systemId || targetId };
+    }
+    if (formId || ['form', 'forms', 'inspection', 'inspections', 'טופס', 'טפסים'].includes(targetType)) {
+        return { isSpecific: true, targetSection: 'forms', targetId: formId || targetId };
+    }
+    if (inventoryId || ['inventory', 'inventory_item', 'inventory_items', 'stock', 'מלאי'].includes(targetType)) {
+        return { isSpecific: true, targetSection: 'inventory', targetId: inventoryId || targetId };
+    }
+
+    // Check path directory or file name
+    const pathStr = String(filePath || getRowVal(doc, 'filePath', 'file_path', 'path', 'url') || '').toLowerCase();
+    if (pathStr.includes('/issues/') || pathStr.includes('/faults/') || pathStr.includes('/problems/') || pathStr.includes('issue_') || pathStr.includes('fault_') || pathStr.includes('problem_')) {
+        return { isSpecific: true, targetSection: 'issues' };
+    }
+    if (pathStr.includes('/tenants/') || pathStr.includes('/residents/') || pathStr.includes('tenant_') || pathStr.includes('sig_tenant')) {
+        return { isSpecific: true, targetSection: 'tenants' };
+    }
+    if (pathStr.includes('/invoices/') || pathStr.includes('/receipts/') || pathStr.includes('/bills/') || pathStr.includes('invoice_') || pathStr.includes('receipt_')) {
+        return { isSpecific: true, targetSection: 'invoices' };
+    }
+    if (pathStr.includes('/workers/') || pathStr.includes('/technicians/') || pathStr.includes('worker_') || pathStr.includes('license_')) {
+        return { isSpecific: true, targetSection: 'workers' };
+    }
+    if (pathStr.includes('/systems/') || pathStr.includes('system_log_') || pathStr.includes('sys_log_')) {
+        return { isSpecific: true, targetSection: 'systems' };
+    }
+    if (pathStr.includes('/forms/') || pathStr.includes('/inspections/') || pathStr.includes('form_') || pathStr.includes('inspection_')) {
+        return { isSpecific: true, targetSection: 'forms' };
+    }
+    if (pathStr.includes('/inventory/') || pathStr.includes('inventory_') || pathStr.includes('item_photo_')) {
+        return { isSpecific: true, targetSection: 'inventory' };
+    }
+
+    return { isSpecific: false };
+};
+
+/**
  * Normalizes priority from mobile string to ProblemSeverity
  */
 const mapPriority = (priority?: string): ProblemSeverity => {
@@ -330,31 +508,52 @@ export const parseMobileBackup = (raw: any): FullAppBackup => {
         // Find tenants belonging to this building
         const buildingTenants: Tenant[] = rawTenants
             .filter((t: any) => belongsToBuilding(t, buildingId, buildingName, totalBuildings) || (!getRowBuildingId(t) && bIdx === 0))
-            .map((t: any, tIdx: number) => ({
-                id: String(getRowVal(t, 'id', 'tenantId', 'tenant_id') || `tenant-${buildingId}-${tIdx + 1}`),
-                buildingId,
-                name: getRowVal(t, 'name', 'tenantName', 'tenant_name', 'fullName', 'full_name') || 'דייר',
-                phone: String(getRowVal(t, 'phone', 'phoneNumber', 'phone_number', 'mobile', 'tel') || ''),
-                email: String(getRowVal(t, 'email', 'mail', 'emailAddress', 'email_address') || ''),
-                building: buildingName,
-                floor: String(getRowVal(t, 'floorNumber', 'floor_number', 'floor') || ''),
-                officeNumber: String(getRowVal(t, 'apartmentNumber', 'apartment_number', 'apartment', 'unit', 'officeNumber', 'office_number') || ''),
-                officeSpace: String(getRowVal(t, 'officeSpace', 'office_space', 'area', 'size') || ''),
-                companyId: String(getRowVal(t, 'companyId', 'company_id') || ''),
-                apartmentNumber: String(getRowVal(t, 'apartmentNumber', 'apartment_number', 'apartment', 'unit', 'officeNumber') || ''),
-                floorNumber: String(getRowVal(t, 'floorNumber', 'floor_number', 'floor') || ''),
-                leaseStartDate: getRowVal(t, 'leaseStartDate', 'lease_start_date', 'startDate', 'start_date'),
-                leaseEndDate: getRowVal(t, 'leaseEndDate', 'lease_end_date', 'endDate', 'end_date'),
-                rentAmount: typeof getRowVal(t, 'rentAmount', 'rent_amount', 'rent', 'price') === 'number' 
-                    ? getRowVal(t, 'rentAmount', 'rent_amount', 'rent', 'price') 
-                    : parseFloat(getRowVal(t, 'rentAmount', 'rent_amount', 'rent', 'price')) || undefined,
-                paymentStatus: getRowVal(t, 'paymentStatus', 'payment_status', 'status') || 'שולם',
-                contactPerson: getRowVal(t, 'contactPerson', 'contact_person', 'emergencyContact', 'emergency_contact'),
-                emergencyContact: getRowVal(t, 'emergencyContact', 'emergency_contact'),
-                contractFilePath: getRowVal(t, 'contractFilePath', 'contract_file_path', 'contractFile', 'contract_file', 'contract'),
-                signaturePath: getRowVal(t, 'signaturePath', 'signature_path', 'signature', 'sign'),
-                notes: getRowVal(t, 'notes', 'comments', 'remark', 'remarks'),
-            }));
+            .map((t: any, tIdx: number) => {
+                const tenantId = String(getRowVal(t, 'id', 'tenantId', 'tenant_id') || `tenant-${buildingId}-${tIdx + 1}`);
+                let contractPath = getRowVal(t, 'contractFilePath', 'contract_file_path', 'contractFile', 'contract_file', 'contract');
+                const sigPath = getRowVal(t, 'signaturePath', 'signature_path', 'signature', 'sign');
+
+                if (!contractPath) {
+                    const docForTenant = rawDocs.find((d: any) => {
+                        const spec = isEntitySpecificFile(d);
+                        return spec.targetSection === 'tenants' && (spec.targetId === tenantId || !spec.targetId);
+                    });
+                    if (docForTenant) {
+                        contractPath = getRowVal(docForTenant, 'filePath', 'file_path', 'path', 'url');
+                    }
+                }
+
+                return {
+                    id: tenantId,
+                    buildingId,
+                    name: getRowVal(t, 'name', 'tenantName', 'tenant_name', 'fullName', 'full_name') || 'דייר',
+                    phone: String(getRowVal(t, 'phone', 'phoneNumber', 'phone_number', 'mobile', 'tel') || ''),
+                    email: String(getRowVal(t, 'email', 'mail', 'emailAddress', 'email_address') || ''),
+                    building: buildingName,
+                    floor: String(getRowVal(t, 'floorNumber', 'floor_number', 'floor') || ''),
+                    officeNumber: String(getRowVal(t, 'apartmentNumber', 'apartment_number', 'apartment', 'unit', 'officeNumber', 'office_number') || ''),
+                    officeSpace: String(getRowVal(t, 'officeSpace', 'office_space', 'area', 'size') || ''),
+                    companyId: String(getRowVal(t, 'companyId', 'company_id') || ''),
+                    apartmentNumber: String(getRowVal(t, 'apartmentNumber', 'apartment_number', 'apartment', 'unit', 'officeNumber') || ''),
+                    floorNumber: String(getRowVal(t, 'floorNumber', 'floor_number', 'floor') || ''),
+                    leaseStartDate: getRowVal(t, 'leaseStartDate', 'lease_start_date', 'startDate', 'start_date'),
+                    leaseEndDate: getRowVal(t, 'leaseEndDate', 'lease_end_date', 'endDate', 'end_date'),
+                    rentAmount: typeof getRowVal(t, 'rentAmount', 'rent_amount', 'rent', 'price') === 'number' 
+                        ? getRowVal(t, 'rentAmount', 'rent_amount', 'rent', 'price') 
+                        : parseFloat(getRowVal(t, 'rentAmount', 'rent_amount', 'rent', 'price')) || undefined,
+                    paymentStatus: getRowVal(t, 'paymentStatus', 'payment_status', 'status') || 'שולם',
+                    contactPerson: getRowVal(t, 'contactPerson', 'contact_person', 'emergencyContact', 'emergency_contact'),
+                    emergencyContact: getRowVal(t, 'emergencyContact', 'emergency_contact'),
+                    contractFilePath: contractPath,
+                    contractFile: contractPath ? {
+                        name: 'חוזה שכירות',
+                        mimeType: 'application/pdf',
+                        url: contractPath,
+                    } : undefined,
+                    signaturePath: sigPath,
+                    notes: getRowVal(t, 'notes', 'comments', 'remark', 'remarks'),
+                };
+            });
 
         // Find todos for this building
         const buildingTodos: ProjectTodo[] = rawTodoItems
@@ -375,33 +574,45 @@ export const parseMobileBackup = (raw: any): FullAppBackup => {
                 };
             });
 
-        // Find files for this building
+        // Find files for this building - ONLY real building documents, sorted into proper folders!
         const buildingFiles: ProjectFile[] = rawDocs
-            .filter((doc: any) => belongsToBuilding(doc, buildingId, buildingName, totalBuildings) || (!getRowBuildingId(doc) && bIdx === 0))
-            .map((doc: any, docIdx: number) => ({
-                id: String(getRowVal(doc, 'id', 'docId', 'doc_id', 'fileId', 'file_id') || `file-${buildingId}-${docIdx + 1}`),
-                name: getRowVal(doc, 'title', 'name', 'fileName', 'file_name', 'docName', 'doc_name') || 'מסמך',
-                mimeType: getRowVal(doc, 'fileType', 'file_type', 'mimeType', 'mime_type') || 'application/pdf',
-                url: getRowVal(doc, 'filePath', 'file_path', 'path', 'url', 'uri'),
-                group: getRowVal(doc, 'category', 'group', 'folder') || 'כללי',
-                createdAt: getRowVal(doc, 'uploadDate', 'upload_date', 'createdAt', 'created_at', 'date') || now,
-            }));
-
-        // If this is the primary building and unreferencedFiles exist from the zip, append them so no files are lost!
-        if (bIdx === 0 && unreferencedFiles.length > 0) {
-            unreferencedFiles.forEach((uf: any, ufIdx: number) => {
-                const existing = buildingFiles.some(f => f.url === uf.url || f.name === uf.name);
-                if (!existing) {
-                    buildingFiles.push({
-                        id: String(uf.id || `unref-file-${ufIdx + 1}`),
-                        name: uf.name || `קובץ מובייל ${ufIdx + 1}`,
-                        mimeType: uf.mimeType || 'application/pdf',
-                        url: uf.url,
-                        group: uf.group || 'מסמכי ארכיון',
-                        createdAt: uf.createdAt || now,
-                    });
-                }
+            .filter((doc: any) => {
+                if (doc._isAttachedToEntity) return false;
+                const specific = isEntitySpecificFile(doc);
+                if (specific.isSpecific) return false;
+                return belongsToBuilding(doc, buildingId, buildingName, totalBuildings) || (!getRowBuildingId(doc) && bIdx === 0);
+            })
+            .map((doc: any, docIdx: number) => {
+                const filePath = getRowVal(doc, 'filePath', 'file_path', 'path', 'url', 'uri');
+                const group = getFolderCategoryForDocument(doc, filePath);
+                return {
+                    id: String(getRowVal(doc, 'id', 'docId', 'doc_id', 'fileId', 'file_id') || `file-${buildingId}-${docIdx + 1}`),
+                    name: getRowVal(doc, 'title', 'name', 'fileName', 'file_name', 'docName', 'doc_name') || 'מסמך',
+                    mimeType: getRowVal(doc, 'fileType', 'file_type', 'mimeType', 'mime_type') || getMimeTypeFromFilename(filePath || '') || 'application/pdf',
+                    url: filePath,
+                    group: group,
+                    createdAt: getRowVal(doc, 'uploadDate', 'upload_date', 'createdAt', 'created_at', 'date') || now,
+                };
             });
+
+        // Only append legitimate building document files that don't belong to other sections
+        if (bIdx === 0 && unreferencedFiles.length > 0) {
+            unreferencedFiles
+                .filter((uf: any) => uf.isDocumentFile || (!uf.targetSection && !isEntitySpecificFile(uf).isSpecific))
+                .forEach((uf: any, ufIdx: number) => {
+                    const existing = buildingFiles.some(f => f.url === uf.url || (f.name === uf.name && f.group === uf.group));
+                    if (!existing) {
+                        const group = uf.group || getFolderCategoryForDocument(uf, uf.url);
+                        buildingFiles.push({
+                            id: String(uf.id || `unref-doc-${ufIdx + 1}`),
+                            name: uf.name || `מסמך ${ufIdx + 1}`,
+                            mimeType: uf.mimeType || 'application/pdf',
+                            url: uf.url,
+                            group: group,
+                            createdAt: uf.createdAt || now,
+                        });
+                    }
+                });
         }
 
         // Find inventory for this building
@@ -594,7 +805,16 @@ export const parseMobileBackup = (raw: any): FullAppBackup => {
         const invAmount = typeof getRowVal(inv, 'amount', 'total', 'price', 'cost') === 'number' 
             ? getRowVal(inv, 'amount', 'total', 'price', 'cost') 
             : parseFloat(getRowVal(inv, 'amount', 'total', 'price', 'cost')) || 0;
-        const filePath = getRowVal(inv, 'filePath', 'file_path', 'url', 'pdf_path');
+        let filePath = getRowVal(inv, 'filePath', 'file_path', 'url', 'pdf_path');
+        if (!filePath) {
+            const docForInv = rawDocs.find((d: any) => {
+                const spec = isEntitySpecificFile(d);
+                return spec.targetSection === 'invoices' && (spec.targetId === inv.id || spec.targetId === invNum || !spec.targetId);
+            });
+            if (docForInv) {
+                filePath = getRowVal(docForInv, 'filePath', 'file_path', 'path', 'url');
+            }
+        }
 
         return {
             id: String(getRowVal(inv, 'id', 'invoiceId', 'invoice_id') || `inv-${idx + 1}`),
@@ -654,13 +874,32 @@ export const parseMobileBackup = (raw: any): FullAppBackup => {
         const project = projects.find(p => p.id === bId);
         const reportDate = getRowVal(issuesList[0], 'reportedDate', 'reported_date', 'date', 'createdAt', 'created_at') || now.split('T')[0];
 
+        // Attach any report-specific documents to this report
+        const reportFiles: ProjectFile[] = [];
+        rawDocs.forEach((d: any) => {
+            const spec = isEntitySpecificFile(d);
+            if (spec.targetSection === 'reports') {
+                const docUrl = getRowVal(d, 'filePath', 'file_path', 'path', 'url');
+                if (docUrl && !reportFiles.some(rf => rf.url === docUrl)) {
+                    reportFiles.push({
+                        id: String(getRowVal(d, 'id') || generateId()),
+                        name: getRowVal(d, 'name', 'title', 'fileName') || 'קובץ דוח',
+                        mimeType: getRowVal(d, 'fileType', 'mimeType') || 'application/pdf',
+                        url: docUrl,
+                        group: 'דוחות',
+                        createdAt: getRowVal(d, 'uploadDate', 'createdAt') || now,
+                    });
+                }
+            }
+        });
+
         reports.push({
             id: reportId,
             projectId: bId,
             title: `דוח תקלות מובייל - ${project?.name || 'בניין'}`,
             date: reportDate,
             description: `דוח שסונכרן מאפליקציית מובייל (${issuesList.length} תקלות)`,
-            files: [],
+            files: reportFiles,
             createdAt: now,
             updatedAt: now,
         });
@@ -676,6 +915,39 @@ export const parseMobileBackup = (raw: any): FullAppBackup => {
             if (afterPhotoPath) {
                 images.push({ id: generateId(), name: 'תמונה לאחר תיקון', mimeType: 'image/jpeg', url: afterPhotoPath, createdAt: now });
             }
+
+            // Include any already-resolved images array from issue
+            if (Array.isArray(issue.images)) {
+                issue.images.forEach((img: any) => {
+                    const imgUrl = typeof img === 'string' ? img : (img.url || img.filePath || img.dataUrl);
+                    if (imgUrl && !images.some(i => i.url === imgUrl)) {
+                        images.push({
+                            id: generateId(),
+                            name: (typeof img === 'object' && img.name) ? img.name : 'תמונה',
+                            mimeType: (typeof img === 'object' && img.mimeType) ? img.mimeType : 'image/jpeg',
+                            url: imgUrl,
+                            createdAt: (typeof img === 'object' && img.createdAt) ? img.createdAt : now,
+                        });
+                    }
+                });
+            }
+
+            // Include any document from rawDocs linked to this issue
+            rawDocs.forEach((d: any) => {
+                const spec = isEntitySpecificFile(d);
+                if (spec.targetSection === 'issues' && (spec.targetId === problemId || !spec.targetId)) {
+                    const docUrl = getRowVal(d, 'filePath', 'file_path', 'path', 'url');
+                    if (docUrl && !images.some(i => i.url === docUrl)) {
+                        images.push({
+                            id: String(getRowVal(d, 'id') || generateId()),
+                            name: getRowVal(d, 'name', 'title') || 'תמונה מצורפת',
+                            mimeType: getRowVal(d, 'fileType', 'mimeType') || 'image/jpeg',
+                            url: docUrl,
+                            createdAt: getRowVal(d, 'uploadDate', 'createdAt') || now,
+                        });
+                    }
+                }
+            });
 
             const issueTitle = getRowVal(issue, 'title', 'subject', 'name', 'headline');
             const issueDesc = getRowVal(issue, 'description', 'details', 'notes', 'desc');

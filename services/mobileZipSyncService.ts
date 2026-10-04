@@ -7,7 +7,7 @@ import {
 } from '../types';
 import { generateId } from '../utils/idGenerator';
 import { DEFAULT_SETTINGS, SETTINGS_ID } from '../constants';
-import { createUniversalSyncBackup, parseMobileBackup, normalizeBackup, findEntityList, getRowVal } from './mobileSyncService';
+import { createUniversalSyncBackup, parseMobileBackup, normalizeBackup, findEntityList, getRowVal, getFolderCategoryForDocument, isEntitySpecificFile } from './mobileSyncService';
 import * as dbService from './dbService';
 
 /**
@@ -828,6 +828,15 @@ export const restoreFromMobileZip = async (
 
     const attachmentEntries = allFilePaths.filter(p => !isSpecialOrDbFile(p) && (p.startsWith('files/') || p.includes('/')));
 
+    interface ExtractedZipEntry {
+        path: string;
+        baseName: string;
+        subFolder: string;
+        mimeType: string;
+        dataUrl: string;
+    }
+    const extractedEntries: ExtractedZipEntry[] = [];
+
     let extractedCount = 0;
     const totalToExtract = attachmentEntries.length;
     for (const path of attachmentEntries) {
@@ -838,10 +847,25 @@ export const restoreFromMobileZip = async (
                 const mime = getMimeTypeFromFilename(path);
                 const dataUrl = uint8ArrayToDataUrl(buffer, mime);
                 const baseName = path.split('/').pop() || path;
+                const pathParts = path.split('/').filter(Boolean);
+                let subFolder = '';
+                if (pathParts.length > 2 && (pathParts[0] === 'files' || pathParts[0] === 'documents')) {
+                    subFolder = pathParts[1];
+                } else if (pathParts.length > 1 && pathParts[0] !== 'files' && pathParts[0] !== 'documents') {
+                    subFolder = pathParts[0];
+                }
                 
                 filesMap.set(path, dataUrl);
                 filesMap.set(baseName, dataUrl);
                 filesMap.set(baseName.toLowerCase(), dataUrl);
+
+                extractedEntries.push({
+                    path,
+                    baseName,
+                    subFolder,
+                    mimeType: mime,
+                    dataUrl,
+                });
             }
         } catch (e) {
             console.warn(`Could not extract file ${path}:`, e);
@@ -986,17 +1010,26 @@ export const restoreFromMobileZip = async (
     });
     await yieldTick(40);
 
-    // Track URLs already bound to specific entities
+    // Track URLs and paths already bound to specific entities
     const boundUrls = new Set<string>();
-    const markBound = (url?: string) => {
+    const boundPaths = new Set<string>();
+    const markBound = (url?: string, path?: string) => {
         if (url && typeof url === 'string') boundUrls.add(url);
+        if (path && typeof path === 'string') {
+            boundPaths.add(path);
+            boundPaths.add(path.toLowerCase());
+            const base = path.split('/').pop() || path;
+            boundPaths.add(base);
+            boundPaths.add(base.toLowerCase());
+        }
     };
 
     // 4. Resolve attached files into entities across all tables
     const rawBuildingsList = findEntityList(roomData, 'buildings', 'Building', 'building', 'properties', 'property', 'tbl_buildings');
     const buildings = rawBuildingsList.map((b: any) => {
-        const img = resolveFileUrl(getRowVal(b, 'imagePath', 'image_path', 'photoPath', 'photo_path', 'cover', 'image'));
-        markBound(img);
+        const rawImgPath = getRowVal(b, 'imagePath', 'image_path', 'photoPath', 'photo_path', 'cover', 'image');
+        const img = resolveFileUrl(rawImgPath);
+        markBound(img, rawImgPath);
         return {
             ...b,
             imagePath: img,
@@ -1005,39 +1038,140 @@ export const restoreFromMobileZip = async (
 
     const rawTenantsList = findEntityList(roomData, 'tenants', 'Tenant', 'tenant', 'residents', 'resident', 'tbl_tenants');
     const tenants = rawTenantsList.map((t: any) => {
-        const contract = resolveFileUrl(getRowVal(t, 'contractFilePath', 'contract_file_path', 'contractFile', 'contract_file'));
-        const sig = resolveFileUrl(getRowVal(t, 'signaturePath', 'signature_path', 'signature', 'sign'));
-        markBound(contract);
-        markBound(sig);
+        const rawContract = getRowVal(t, 'contractFilePath', 'contract_file_path', 'contractFile', 'contract_file', 'contract');
+        const rawSig = getRowVal(t, 'signaturePath', 'signature_path', 'signature', 'sign');
+        let contract = resolveFileUrl(rawContract);
+        const sig = resolveFileUrl(rawSig);
+
+        const tenantIdStr = String(getRowVal(t, 'id', 'tenantId', 'tenant_id') || '');
+        const tenantNameStr = String(getRowVal(t, 'name', 'tenantName', 'tenant_name') || '').toLowerCase();
+
+        // Search extracted zip files for tenant contract if not already set
+        if (!contract && (tenantIdStr || tenantNameStr)) {
+            const matchedEntry = extractedEntries.find(entry => {
+                const lower = entry.baseName.toLowerCase();
+                const lowerFolder = entry.subFolder.toLowerCase();
+                const isTenantFolder = ['tenants', 'residents', 'דיירים', 'contracts', 'חוזים'].includes(lowerFolder);
+                const hasId = tenantIdStr && (lower.includes(`tenant_${tenantIdStr}`) || lower.includes(`_${tenantIdStr}.`) || lower.startsWith(tenantIdStr));
+                const hasName = tenantNameStr.length >= 3 && lower.includes(tenantNameStr);
+                return (isTenantFolder && (hasId || hasName)) || hasId;
+            });
+            if (matchedEntry) {
+                contract = matchedEntry.dataUrl;
+                markBound(matchedEntry.dataUrl, matchedEntry.path);
+            }
+        }
+
+        markBound(contract, rawContract);
+        markBound(sig, rawSig);
         return {
             ...t,
             contractFilePath: contract,
+            contractFile: contract ? {
+                name: 'חוזה שכירות',
+                mimeType: 'application/pdf',
+                url: contract,
+            } : undefined,
             signaturePath: sig,
         };
     });
 
     const rawIssuesList = findEntityList(roomData, 'issues', 'Issue', 'issue', 'problems', 'problem', 'faults', 'fault', 'defects', 'defect', 'tasks', 'task', 'tickets', 'tbl_issues');
     const issues = rawIssuesList.map((i: any) => {
-        const photo = resolveFileUrl(getRowVal(i, 'photoPath', 'photo_path', 'photo', 'imagePath', 'image_path', 'image'));
-        const afterPhoto = resolveFileUrl(getRowVal(i, 'afterPhotoPath', 'after_photo_path', 'afterPhoto', 'after_photo', 'repairPhoto'));
-        const sig = resolveFileUrl(getRowVal(i, 'signaturePath', 'signature_path', 'signature', 'sign'));
-        markBound(photo);
-        markBound(afterPhoto);
-        markBound(sig);
+        const rawPhoto = getRowVal(i, 'photoPath', 'photo_path', 'photo', 'imagePath', 'image_path', 'image');
+        const rawAfterPhoto = getRowVal(i, 'afterPhotoPath', 'after_photo_path', 'afterPhoto', 'after_photo', 'repairPhoto');
+        const rawSig = getRowVal(i, 'signaturePath', 'signature_path', 'signature', 'sign');
+
+        const photo = resolveFileUrl(rawPhoto);
+        const afterPhoto = resolveFileUrl(rawAfterPhoto);
+        const sig = resolveFileUrl(rawSig);
+
+        markBound(photo, rawPhoto);
+        markBound(afterPhoto, rawAfterPhoto);
+        markBound(sig, rawSig);
+
+        const issueImages: any[] = [];
+        if (photo) {
+            issueImages.push({ id: generateId(), name: 'תמונה ראשונית', mimeType: 'image/jpeg', url: photo, createdAt: new Date().toISOString() });
+        }
+        if (afterPhoto) {
+            issueImages.push({ id: generateId(), name: 'תמונה לאחר תיקון', mimeType: 'image/jpeg', url: afterPhoto, createdAt: new Date().toISOString() });
+        }
+
+        // Check if multiple images array or json string was stored
+        const rawImgs = getRowVal(i, 'images', 'photos', 'imagePaths', 'image_paths');
+        let parsedImgs: any[] = [];
+        if (Array.isArray(rawImgs)) {
+            parsedImgs = rawImgs;
+        } else if (typeof rawImgs === 'string' && rawImgs.startsWith('[')) {
+            try { 
+                parsedImgs = JSON.parse(rawImgs); 
+            } catch (e) {
+                console.warn('Could not parse issue images JSON', e);
+            }
+        }
+        parsedImgs.forEach((imgItem: any) => {
+            const itemPath = typeof imgItem === 'string' ? imgItem : (imgItem.path || imgItem.url || imgItem.filePath);
+            const resolved = resolveFileUrl(itemPath);
+            if (resolved) {
+                markBound(resolved, itemPath);
+                if (!issueImages.some(img => img.url === resolved)) {
+                    issueImages.push({
+                        id: generateId(),
+                        name: (typeof imgItem === 'object' && imgItem.name) ? imgItem.name : 'תמונה',
+                        mimeType: getMimeTypeFromFilename(itemPath || 'photo.jpg'),
+                        url: resolved,
+                        createdAt: (typeof imgItem === 'object' && imgItem.createdAt) ? imgItem.createdAt : new Date().toISOString()
+                    });
+                }
+            }
+        });
+
+        // Search extracted zip files matching this issue ID
+        const issueIdStr = String(getRowVal(i, 'id', 'issueId', 'issue_id') || '');
+        if (issueIdStr) {
+            extractedEntries.forEach(entry => {
+                const lowerFolder = entry.subFolder.toLowerCase();
+                const lowerBase = entry.baseName.toLowerCase();
+                if (
+                    ['issues', 'faults', 'problems', 'defects', 'תקלות'].includes(lowerFolder) ||
+                    lowerBase.startsWith(`issue_${issueIdStr}_`) ||
+                    lowerBase.startsWith(`problem_${issueIdStr}_`) ||
+                    lowerBase.startsWith(`fault_${issueIdStr}_`)
+                ) {
+                    if (lowerBase.includes(issueIdStr) || lowerFolder) {
+                        markBound(entry.dataUrl, entry.path);
+                        if (!issueImages.some(img => img.url === entry.dataUrl)) {
+                            issueImages.push({
+                                id: generateId(),
+                                name: entry.baseName,
+                                mimeType: entry.mimeType,
+                                url: entry.dataUrl,
+                                createdAt: new Date().toISOString()
+                            });
+                        }
+                    }
+                }
+            });
+        }
+
         return {
             ...i,
             photoPath: photo,
             afterPhotoPath: afterPhoto,
             signaturePath: sig,
+            images: issueImages,
         };
     });
 
     const rawInventoryList = findEntityList(roomData, 'inventoryItems', 'InventoryItem', 'inventory_items', 'inventoryitems', 'inventory', 'items', 'item', 'stock', 'warehouse', 'tbl_inventory');
     const inventoryItems = rawInventoryList.map((inv: any) => {
-        const photo = resolveFileUrl(getRowVal(inv, 'photoPath', 'photo_path', 'image', 'imagePath', 'image_path'));
-        const catalog = resolveFileUrl(getRowVal(inv, 'catalogFilePath', 'catalog_file_path', 'manual', 'document'));
-        markBound(photo);
-        markBound(catalog);
+        const rawPhoto = getRowVal(inv, 'photoPath', 'photo_path', 'image', 'imagePath', 'image_path');
+        const rawCatalog = getRowVal(inv, 'catalogFilePath', 'catalog_file_path', 'manual', 'document');
+        const photo = resolveFileUrl(rawPhoto);
+        const catalog = resolveFileUrl(rawCatalog);
+        markBound(photo, rawPhoto);
+        markBound(catalog, rawCatalog);
         return {
             ...inv,
             photoPath: photo,
@@ -1045,20 +1179,30 @@ export const restoreFromMobileZip = async (
         };
     });
 
-    const rawDocsList = findEntityList(roomData, 'documentFiles', 'DocumentFile', 'document_files', 'documentfiles', 'documents', 'document', 'files', 'file', 'attachments', 'tbl_documents');
-    const documentFiles = rawDocsList.map((d: any) => {
-        const fp = resolveFileUrl(getRowVal(d, 'filePath', 'file_path', 'path', 'url', 'uri'));
-        markBound(fp);
-        return {
-            ...d,
-            filePath: fp,
-        };
-    });
-
     const rawInvoicesList = findEntityList(roomData, 'invoices', 'Invoice', 'invoice', 'bills', 'bill', 'receipts', 'receipt', 'expenses', 'tbl_invoices');
     const invoices = rawInvoicesList.map((inv: any) => {
-        const fp = resolveFileUrl(getRowVal(inv, 'filePath', 'file_path', 'url', 'pdf_path'));
-        markBound(fp);
+        const rawFp = getRowVal(inv, 'filePath', 'file_path', 'url', 'pdf_path');
+        let fp = resolveFileUrl(rawFp);
+
+        const invNum = String(getRowVal(inv, 'invoiceNumber', 'invoice_number', 'number') || '');
+        const invId = String(getRowVal(inv, 'id', 'invoiceId', 'invoice_id') || '');
+
+        if (!fp && (invNum || invId)) {
+            const matchedEntry = extractedEntries.find(entry => {
+                const lower = entry.baseName.toLowerCase();
+                const lowerFolder = entry.subFolder.toLowerCase();
+                const isInvFolder = ['invoices', 'receipts', 'bills', 'expenses', 'חשבוניות'].includes(lowerFolder);
+                const hasNum = invNum && lower.includes(invNum.toLowerCase());
+                const hasId = invId && lower.includes(invId.toLowerCase());
+                return (isInvFolder && (hasNum || hasId)) || hasNum;
+            });
+            if (matchedEntry) {
+                fp = matchedEntry.dataUrl;
+                markBound(matchedEntry.dataUrl, matchedEntry.path);
+            }
+        }
+
+        markBound(fp, rawFp);
         return {
             ...inv,
             filePath: fp,
@@ -1067,8 +1211,9 @@ export const restoreFromMobileZip = async (
 
     const rawWorkersList = findEntityList(roomData, 'workers', 'Worker', 'worker', 'contractors', 'contractor', 'technicians', 'technician', 'tbl_workers');
     const workers = rawWorkersList.map((w: any) => {
-        const cert = resolveFileUrl(getRowVal(w, 'certificatePath', 'certificate_path', 'photo', 'photoPath', 'photo_path', 'license'));
-        markBound(cert);
+        const rawCert = getRowVal(w, 'certificatePath', 'certificate_path', 'photo', 'photoPath', 'photo_path', 'license');
+        const cert = resolveFileUrl(rawCert);
+        markBound(cert, rawCert);
         return {
             ...w,
             certificatePath: cert,
@@ -1077,8 +1222,9 @@ export const restoreFromMobileZip = async (
 
     const rawSystemLogsList = findEntityList(roomData, 'buildingSystemLogs', 'BuildingSystemLog', 'building_system_logs', 'systems', 'system', 'system_logs');
     const buildingSystemLogs = rawSystemLogsList.map((log: any) => {
-        const cert = resolveFileUrl(getRowVal(log, 'certificatePath', 'certificate_path', 'certificateFile', 'filePath', 'file_path'));
-        markBound(cert);
+        const rawCert = getRowVal(log, 'certificatePath', 'certificate_path', 'certificateFile', 'filePath', 'file_path');
+        const cert = resolveFileUrl(rawCert);
+        markBound(cert, rawCert);
         return {
             ...log,
             certificatePath: cert,
@@ -1087,8 +1233,9 @@ export const restoreFromMobileZip = async (
 
     const rawSuppliersList = findEntityList(roomData, 'suppliers', 'Supplier', 'supplier', 'vendors', 'vendor', 'tbl_suppliers');
     const suppliers = rawSuppliersList.map((s: any) => {
-        const contract = resolveFileUrl(getRowVal(s, 'contractFilePath', 'contract_file_path'));
-        markBound(contract);
+        const rawContract = getRowVal(s, 'contractFilePath', 'contract_file_path');
+        const contract = resolveFileUrl(rawContract);
+        markBound(contract, rawContract);
         return {
             ...s,
             contractFilePath: contract,
@@ -1101,15 +1248,52 @@ export const restoreFromMobileZip = async (
     const rawFilledFormsList = findEntityList(roomData, 'filledForms', 'FilledForm', 'filled_forms', 'inspections', 'protocols');
     const rawProjectsList = findEntityList(roomData, 'projects', 'Project', 'project', 'subProjects', 'sub_projects', 'subprojects');
 
-    // Collect all unreferenced files from filesMap so no uploaded document or attachment is lost!
+    // 5. Carefully process SQLite DocumentFiles:
+    // Route entity-specific files to their respective sections, and preserve folder categories for genuine building documents!
+    const rawDocsList = findEntityList(roomData, 'documentFiles', 'DocumentFile', 'document_files', 'documentfiles', 'documents', 'document', 'files', 'file', 'attachments', 'tbl_documents');
+    const documentFiles = rawDocsList.map((d: any) => {
+        const rawFp = getRowVal(d, 'filePath', 'file_path', 'path', 'url', 'uri');
+        const fp = resolveFileUrl(rawFp);
+
+        const specific = isEntitySpecificFile(d, rawFp);
+        const folderCategory = getFolderCategoryForDocument(d, rawFp);
+
+        if (specific.isSpecific) {
+            markBound(fp, rawFp);
+            return {
+                ...d,
+                filePath: fp,
+                _isAttachedToEntity: true,
+                _targetSection: specific.targetSection,
+                _targetId: specific.targetId,
+                category: folderCategory,
+                group: folderCategory,
+            };
+        }
+
+        // Real building document: preserve folder category!
+        markBound(fp, rawFp);
+        return {
+            ...d,
+            filePath: fp,
+            category: folderCategory,
+            group: folderCategory,
+            folder: folderCategory,
+        };
+    });
+
+    // 6. Process remaining unreferenced files in the ZIP archive:
+    // DO NOT dump issue photos, invoices, or entity files into building documents!
+    // Only real documents get added to building files, sorted into their actual folder or smart Hebrew category.
     const unreferencedFiles: any[] = [];
     const addedFileUrls = new Set<string>();
-    for (const [path, dataUrl] of filesMap.entries()) {
-        if (!dataUrl || boundUrls.has(dataUrl) || addedFileUrls.has(dataUrl)) continue;
-        if (!path.includes('/') && !path.includes('.')) continue; // skip bare IDs
 
-        const baseName = path.split('/').pop() || path;
-        const lower = baseName.toLowerCase();
+    for (const entry of extractedEntries) {
+        if (!entry.dataUrl || boundUrls.has(entry.dataUrl) || boundPaths.has(entry.path) || addedFileUrls.has(entry.dataUrl)) {
+            continue;
+        }
+
+        const lower = entry.baseName.toLowerCase();
         if (
             lower.endsWith('.db') || 
             lower.endsWith('.sqlite') || 
@@ -1120,15 +1304,74 @@ export const restoreFromMobileZip = async (
             continue;
         }
 
-        addedFileUrls.add(dataUrl);
-        unreferencedFiles.push({
-            id: generateId(),
-            name: baseName,
-            mimeType: getMimeTypeFromFilename(baseName),
-            url: dataUrl,
-            group: 'קבצים מצורפים',
-            createdAt: new Date().toISOString(),
-        });
+        const lowerFolder = entry.subFolder.toLowerCase();
+        const isIssueFile = ['issues', 'faults', 'problems', 'defects', 'תקלות'].includes(lowerFolder) || lower.startsWith('issue_') || lower.startsWith('fault_') || lower.startsWith('problem_');
+        const isTenantFile = ['tenants', 'residents', 'דיירים'].includes(lowerFolder) || lower.startsWith('tenant_') || lower.startsWith('sig_tenant');
+        const isInvoiceFile = ['invoices', 'receipts', 'bills', 'expenses', 'חשבוניות'].includes(lowerFolder) || lower.startsWith('invoice_') || lower.startsWith('receipt_');
+        const isWorkerFile = ['workers', 'technicians', 'contractors', 'עובדים', 'licenses'].includes(lowerFolder) || lower.startsWith('worker_');
+        const isSystemFile = ['systems', 'system_logs', 'מערכות'].includes(lowerFolder) || lower.startsWith('system_');
+        const isReportFile = ['reports', 'דוחות'].includes(lowerFolder) || lower.startsWith('report_');
+
+        if (isIssueFile) {
+            boundUrls.add(entry.dataUrl);
+            addedFileUrls.add(entry.dataUrl);
+            if (issues.length > 0) {
+                if (!issues[0].images) issues[0].images = [];
+                issues[0].images.push({
+                    id: generateId(),
+                    name: entry.baseName,
+                    mimeType: entry.mimeType,
+                    url: entry.dataUrl,
+                    createdAt: new Date().toISOString(),
+                });
+            }
+            continue;
+        }
+
+        if (isTenantFile) {
+            boundUrls.add(entry.dataUrl);
+            addedFileUrls.add(entry.dataUrl);
+            if (tenants.length > 0 && !tenants[0].contractFilePath) {
+                tenants[0].contractFilePath = entry.dataUrl;
+            }
+            continue;
+        }
+
+        if (isInvoiceFile) {
+            boundUrls.add(entry.dataUrl);
+            addedFileUrls.add(entry.dataUrl);
+            if (invoices.length > 0 && !invoices[0].filePath) {
+                invoices[0].filePath = entry.dataUrl;
+            }
+            continue;
+        }
+
+        if (isWorkerFile || isSystemFile || isReportFile) {
+            boundUrls.add(entry.dataUrl);
+            addedFileUrls.add(entry.dataUrl);
+            continue;
+        }
+
+        // Only true document files are eligible for the Building Documents section
+        const isDocType = entry.mimeType.startsWith('application/pdf') || 
+                          entry.mimeType.startsWith('text/') || 
+                          ['doc', 'docx', 'xls', 'xlsx', 'dwg', 'pdf', 'csv', 'txt'].includes(lower.split('.').pop() || '');
+
+        const isDocFolder = Boolean(entry.subFolder) && !['temp', 'cache', 'all', 'images', 'photos'].includes(lowerFolder);
+
+        if (isDocType || isDocFolder) {
+            addedFileUrls.add(entry.dataUrl);
+            const folderCategory = getFolderCategoryForDocument({ name: entry.baseName, category: entry.subFolder }, entry.path);
+            unreferencedFiles.push({
+                id: generateId(),
+                name: entry.baseName,
+                mimeType: entry.mimeType,
+                url: entry.dataUrl,
+                group: folderCategory,
+                isDocumentFile: true,
+                createdAt: new Date().toISOString(),
+            });
+        }
     }
 
     // Merge settings from roomData and shared_prefs
