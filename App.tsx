@@ -54,6 +54,7 @@ const ProjectElectricalToolsPage = lazy(() => import('./pages/ProjectElectricalT
 const ProjectSubProjectsPage = lazy(() => import('./pages/ProjectSubProjectsPage'));
 const SubProjectDetailPage = lazy(() => import('./pages/SubProjectDetailPage'));
 const AllSubProjectsPage = lazy(() => import('./pages/AllSubProjectsPage'));
+const AllBuildingSystemsPage = lazy(() => import('./pages/AllBuildingSystemsPage'));
 const CalendarPage = lazy(() => import('./pages/CalendarPage'));
 const AISmartImportPage = lazy(() => import('./pages/AISmartImportPage'));
 
@@ -121,8 +122,11 @@ const MainLayout: React.FC = () => {
             'about': 'אודות',
             'notifications': 'יומן פעילות',
             'form-templates': 'תבניות טפסים',
-            'all-reports': 'כל הדוחות',
-            'all-forms': 'כל הטפסים',
+            'all-reports': 'כל הדוחות וסקרי המבנה',
+            'all-building-systems': 'מערכות תשתית ובטיחות',
+            'building-systems': 'מערכות תשתית ובטיחות',
+            'systems': 'מערכות תשתית ובטיחות',
+            'all-forms': 'כל הטפסים והסקרים',
             'all-files': 'כל הקבצים',
             'all-todos': 'כל המשימות',
             'all-problems-checklist': 'רשימת תקלות כללית',
@@ -369,6 +373,9 @@ const MainLayout: React.FC = () => {
               <Route path="/notifications" element={<NotificationsPage />} />
               <Route path="/form-templates" element={<FormTemplatesListPage />} />
               <Route path="/all-reports" element={<AllReportsPage />} />
+              <Route path="/all-building-systems" element={<AllBuildingSystemsPage />} />
+              <Route path="/building-systems" element={<AllBuildingSystemsPage />} />
+              <Route path="/systems" element={<AllBuildingSystemsPage />} />
               <Route path="/all-forms" element={<AllFormsPage />} />
               <Route path="/all-files" element={<AllFilesPage />} />
               <Route path="/all-todos" element={<AllTodosPage />} />

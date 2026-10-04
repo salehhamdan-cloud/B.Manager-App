@@ -678,6 +678,19 @@ export const createMobileZipBackup = async (
         }
     });
 
+    (universal.suppliers || []).forEach((s: any) => {
+        if (s.contractFilePath) {
+            s.contractFilePath = addFileToZip(s.contractFilePath, `supplier_contract_${s.id}`);
+        }
+    });
+
+    (universal.buildingSystemLogs || []).forEach((bsl: any) => {
+        const cert = bsl.certificatePath || bsl.certificateFile?.url;
+        if (cert) {
+            bsl.certificatePath = addFileToZip(cert, `system_cert_${bsl.id}`, 'cert.pdf');
+        }
+    });
+
     if (universal.appSettings?.logoPath) {
         universal.appSettings.logoPath = addFileToZip(universal.appSettings.logoPath, 'company_logo', 'logo.png');
     }
@@ -895,23 +908,49 @@ export const restoreFromMobileZip = async (
 
     // Helper to resolve a stored path to an in-memory data URL
     const resolveFileUrl = (storedPath?: string): string | undefined => {
-        if (!storedPath) return undefined;
-        if (storedPath.startsWith('data:')) return storedPath; // Already data URL
+        if (!storedPath || typeof storedPath !== 'string') return undefined;
+        if (storedPath.startsWith('data:') || storedPath.startsWith('blob:') || storedPath.startsWith('http')) {
+            return storedPath;
+        }
 
+        // 1. Direct path lookup
         const direct = filesMap.get(storedPath);
         if (direct) return direct;
 
-        const baseName = storedPath.split('/').pop() || storedPath;
-        const fromBase = filesMap.get(baseName) || filesMap.get(baseName.toLowerCase());
-        if (fromBase) return fromBase;
+        // 2. Cleaned relative path lookup
+        const normalized = storedPath.replace(/\\/g, '/').replace(/^\/+/, '');
+        if (filesMap.has(normalized)) return filesMap.get(normalized);
 
-        // Try fuzzy match by ID or prefix
-        for (const [key, val] of filesMap.entries()) {
-            if (baseName && (key.includes(baseName) || baseName.includes(key))) {
-                return val;
+        const withoutPrefix = normalized
+            .replace(/^.*\/files\//, 'files/')
+            .replace(/^.*\/app_files\//, '')
+            .replace(/^.*\/databases\//, 'databases/');
+        if (filesMap.has(withoutPrefix)) return filesMap.get(withoutPrefix);
+        if (filesMap.has(`files/${withoutPrefix}`)) return filesMap.get(`files/${withoutPrefix}`);
+
+        // 3. Exact baseName lookup
+        const baseName = normalized.split('/').pop() || normalized;
+        if (baseName) {
+            const fromBase = filesMap.get(baseName) || filesMap.get(baseName.toLowerCase());
+            if (fromBase) return fromBase;
+
+            try {
+                const decoded = decodeURIComponent(baseName);
+                if (filesMap.has(decoded)) return filesMap.get(decoded);
+                if (filesMap.has(decoded.toLowerCase())) return filesMap.get(decoded.toLowerCase());
+            } catch {
+                // ignore
+            }
+
+            // 4. Exact match without timestamp or uuid prefix
+            const strippedName = baseName.replace(/^[0-9a-fA-F-]{8,}_/, '').replace(/^\d{10,14}_/, '');
+            if (strippedName && strippedName.length > 3) {
+                const fromStripped = filesMap.get(strippedName) || filesMap.get(strippedName.toLowerCase());
+                if (fromStripped) return fromStripped;
             }
         }
-        return storedPath;
+
+        return undefined;
     };
 
     onProgress?.({ 
@@ -1220,14 +1259,24 @@ export const restoreFromMobileZip = async (
         };
     });
 
-    const rawSystemLogsList = findEntityList(roomData, 'buildingSystemLogs', 'BuildingSystemLog', 'building_system_logs', 'systems', 'system', 'system_logs');
+    const rawSystemLogsList = findEntityList(
+        roomData, 
+        'buildingSystemLogs', 'BuildingSystemLog', 'building_system_logs', 'buildingsystemlogs', 
+        'building_systems', 'buildingsystems', 'systems', 'system', 'system_logs', 'systemlogs', 
+        'building_system', 'equipment', 'tbl_building_systems', 'tbl_building_system_logs', 'tbl_systems', 'tbl_equipment'
+    );
     const buildingSystemLogs = rawSystemLogsList.map((log: any) => {
-        const rawCert = getRowVal(log, 'certificatePath', 'certificate_path', 'certificateFile', 'filePath', 'file_path');
+        const rawCert = getRowVal(log, 'certificatePath', 'certificate_path', 'certificateFile', 'filePath', 'file_path', 'documentPath');
         const cert = resolveFileUrl(rawCert);
         markBound(cert, rawCert);
         return {
             ...log,
             certificatePath: cert,
+            certificateFile: cert ? {
+                name: getRowVal(log, 'title', 'systemName') || 'אישור בדיקה תקופתי',
+                mimeType: getMimeTypeFromFilename(rawCert || 'certificate.pdf'),
+                url: cert,
+            } : undefined,
         };
     });
 
@@ -1246,11 +1295,38 @@ export const restoreFromMobileZip = async (
     const rawPreventiveList = findEntityList(roomData, 'preventiveEvents', 'PreventiveEvent', 'preventive_events', 'preventive', 'maintenance', 'tbl_preventive_events');
     const rawTemplatesList = findEntityList(roomData, 'formTemplates', 'FormTemplate', 'form_templates', 'forms', 'form', 'templates', 'template');
     const rawFilledFormsList = findEntityList(roomData, 'filledForms', 'FilledForm', 'filled_forms', 'inspections', 'protocols');
+    
+    // Extract reports, surveys, and inspections with their resolved attached files
+    const mapReportFiles = (item: any, defaultType: string) => {
+        const itemFiles: ProjectFile[] = Array.isArray(item.files) ? [...item.files] : [];
+        const rawFp = getRowVal(item, 'filePath', 'file_path', 'pdfPath', 'pdf_path', 'reportPath', 'report_path', 'documentPath');
+        const resolvedFp = resolveFileUrl(rawFp);
+        if (resolvedFp) {
+            markBound(resolvedFp, rawFp);
+            itemFiles.push({
+                id: generateId(),
+                name: getRowVal(item, 'title', 'name') || 'קובץ דוח/סקר',
+                mimeType: getMimeTypeFromFilename(rawFp || 'report.pdf'),
+                url: resolvedFp,
+                group: defaultType === 'survey' ? 'סקרי מבנה' : 'דוחות',
+                createdAt: getRowVal(item, 'date', 'createdAt') || new Date().toISOString(),
+            });
+        }
+        return {
+            ...item,
+            reportType: item.reportType || defaultType,
+            files: itemFiles,
+        };
+    };
+
+    const rawReportsList = findEntityList(roomData, 'reports', 'Report', 'report', 'inspection_reports', 'tbl_reports', 'building_reports').map((r: any) => mapReportFiles(r, 'standard'));
+    const rawSurveysList = findEntityList(roomData, 'surveys', 'Survey', 'survey', 'building_surveys', 'tbl_surveys').map((s: any) => mapReportFiles(s, 'survey'));
+    const rawInspectionsList = findEntityList(roomData, 'inspections', 'inspection', 'tbl_inspections', 'protocols', 'protocol', 'tbl_protocols', 'audits', 'audit').map((i: any) => mapReportFiles(i, 'inspection'));
     const rawProjectsList = findEntityList(roomData, 'projects', 'Project', 'project', 'subProjects', 'sub_projects', 'subprojects');
 
     // 5. Carefully process SQLite DocumentFiles:
     // Route entity-specific files to their respective sections, and preserve folder categories for genuine building documents!
-    const rawDocsList = findEntityList(roomData, 'documentFiles', 'DocumentFile', 'document_files', 'documentfiles', 'documents', 'document', 'files', 'file', 'attachments', 'tbl_documents');
+    const rawDocsList = findEntityList(roomData, 'documentFiles', 'DocumentFile', 'document_files', 'documentfiles', 'documents', 'document', 'tbl_documents');
     const documentFiles = rawDocsList.map((d: any) => {
         const rawFp = getRowVal(d, 'filePath', 'file_path', 'path', 'url', 'uri');
         const fp = resolveFileUrl(rawFp);
@@ -1283,8 +1359,7 @@ export const restoreFromMobileZip = async (
     });
 
     // 6. Process remaining unreferenced files in the ZIP archive:
-    // DO NOT dump issue photos, invoices, or entity files into building documents!
-    // Only real documents get added to building files, sorted into their actual folder or smart Hebrew category.
+    // Only genuine documents in document folders are added, never loose photos or temp files!
     const unreferencedFiles: any[] = [];
     const addedFileUrls = new Set<string>();
 
@@ -1305,61 +1380,12 @@ export const restoreFromMobileZip = async (
         }
 
         const lowerFolder = entry.subFolder.toLowerCase();
-        const isIssueFile = ['issues', 'faults', 'problems', 'defects', 'תקלות'].includes(lowerFolder) || lower.startsWith('issue_') || lower.startsWith('fault_') || lower.startsWith('problem_');
-        const isTenantFile = ['tenants', 'residents', 'דיירים'].includes(lowerFolder) || lower.startsWith('tenant_') || lower.startsWith('sig_tenant');
-        const isInvoiceFile = ['invoices', 'receipts', 'bills', 'expenses', 'חשבוניות'].includes(lowerFolder) || lower.startsWith('invoice_') || lower.startsWith('receipt_');
-        const isWorkerFile = ['workers', 'technicians', 'contractors', 'עובדים', 'licenses'].includes(lowerFolder) || lower.startsWith('worker_');
-        const isSystemFile = ['systems', 'system_logs', 'מערכות'].includes(lowerFolder) || lower.startsWith('system_');
-        const isReportFile = ['reports', 'דוחות'].includes(lowerFolder) || lower.startsWith('report_');
+        const isDocFolder = ['documents', 'docs', 'blueprints', 'contracts', 'מסמכים', 'תוכניות', 'חוזים'].includes(lowerFolder);
+        const ext = lower.split('.').pop() || '';
+        const isDocExt = ['pdf', 'dwg', 'doc', 'docx', 'xls', 'xlsx', 'csv', 'txt'].includes(ext);
 
-        if (isIssueFile) {
-            boundUrls.add(entry.dataUrl);
-            addedFileUrls.add(entry.dataUrl);
-            if (issues.length > 0) {
-                if (!issues[0].images) issues[0].images = [];
-                issues[0].images.push({
-                    id: generateId(),
-                    name: entry.baseName,
-                    mimeType: entry.mimeType,
-                    url: entry.dataUrl,
-                    createdAt: new Date().toISOString(),
-                });
-            }
-            continue;
-        }
-
-        if (isTenantFile) {
-            boundUrls.add(entry.dataUrl);
-            addedFileUrls.add(entry.dataUrl);
-            if (tenants.length > 0 && !tenants[0].contractFilePath) {
-                tenants[0].contractFilePath = entry.dataUrl;
-            }
-            continue;
-        }
-
-        if (isInvoiceFile) {
-            boundUrls.add(entry.dataUrl);
-            addedFileUrls.add(entry.dataUrl);
-            if (invoices.length > 0 && !invoices[0].filePath) {
-                invoices[0].filePath = entry.dataUrl;
-            }
-            continue;
-        }
-
-        if (isWorkerFile || isSystemFile || isReportFile) {
-            boundUrls.add(entry.dataUrl);
-            addedFileUrls.add(entry.dataUrl);
-            continue;
-        }
-
-        // Only true document files are eligible for the Building Documents section
-        const isDocType = entry.mimeType.startsWith('application/pdf') || 
-                          entry.mimeType.startsWith('text/') || 
-                          ['doc', 'docx', 'xls', 'xlsx', 'dwg', 'pdf', 'csv', 'txt'].includes(lower.split('.').pop() || '');
-
-        const isDocFolder = Boolean(entry.subFolder) && !['temp', 'cache', 'all', 'images', 'photos'].includes(lowerFolder);
-
-        if (isDocType || isDocFolder) {
+        // Only true document files in document folders or with document extensions are eligible for building documents
+        if (isDocFolder && isDocExt) {
             addedFileUrls.add(entry.dataUrl);
             const folderCategory = getFolderCategoryForDocument({ name: entry.baseName, category: entry.subFolder }, entry.path);
             unreferencedFiles.push({
@@ -1407,10 +1433,13 @@ export const restoreFromMobileZip = async (
         preventiveEvents: rawPreventiveList,
         formTemplates: rawTemplatesList,
         filledForms: rawFilledFormsList,
+        reports: rawReportsList,
+        surveys: rawSurveysList,
+        inspections: rawInspectionsList,
         buildingSystemLogs,
         projects: rawProjectsList,
         appSettings: mergedAppSettings,
-        unreferencedFiles,
+        unreferencedFiles: rawDocsList.length > 0 ? [] : unreferencedFiles,
     };
 
     // 5. Convert to normalized Web application database structure

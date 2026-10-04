@@ -6,6 +6,7 @@ import LoadingSpinner from '../components/common/LoadingSpinner';
 import { PlusIcon, PencilIcon, TrashIcon, EyeIcon, ArrowDownTrayIcon } from '../components/icons/ActionIcons';
 import { DocumentTextIcon } from '../components/icons/BusinessIcons';
 import Modal from '../components/common/Modal';
+import UniversalFileViewerModal from '../components/common/UniversalFileViewerModal';
 import { generateId } from '../utils/idGenerator';
 import { formatDate } from '../utils/dateFormatter';
 import CollapsibleSection from '../components/common/CollapsibleSection';
@@ -822,7 +823,11 @@ const ApprovedQuotationsPage: React.FC = () => {
                 </div>
             </Modal>
             <Modal isOpen={isDetailsModalOpen} onClose={() => setIsDetailsModalOpen(false)} title="פרטי הצעת מחיר">{viewingQuotation && (<div className="space-y-3"><p><strong>בניין:</strong> {viewingQuotation.projectName}</p>{viewingQuotation.subProjectName && <p><strong>פרויקט משנה:</strong> {viewingQuotation.subProjectName}</p>}<p><strong>שם הצעה:</strong> {viewingQuotation.quotationName}</p><p><strong>ספק:</strong> {viewingQuotation.supplierName}</p><p><strong>תאריך:</strong> {formatDate(viewingQuotation.date)}</p><p><strong>מחיר:</strong> ₪{viewingQuotation.price.toLocaleString()}</p><p><strong>מספר הצעה:</strong> {viewingQuotation.quotationNumber}</p><p><strong>תחום:</strong> {viewingQuotation.group}</p><p><strong>סטטוס:</strong> <span className={`px-2 py-1 text-xs rounded-full ${QUOTATION_STATUS_COLORS[viewingQuotation.status].bg} ${QUOTATION_STATUS_COLORS[viewingQuotation.status].text}`}>{viewingQuotation.status}</span></p><div className="pt-2 border-t"><button onClick={() => { const src = viewingQuotation.pdfFile.url || viewingQuotation.pdfFile.dataUrl; if(src) {setViewingPdf({name: viewingQuotation.pdfFile.name, dataUrl: src}); setIsPdfViewerOpen(true);}}} className="text-sky-600 hover:underline flex items-center gap-1"><DocumentTextIcon className="w-4 h-4"/>הצג קובץ הצעת מחיר</button></div>{viewingQuotation.invoicePdfFile && (<div><p><strong>מספר חשבונית:</strong> {viewingQuotation.invoiceNumber || '-'}</p><button onClick={() => { const src = viewingQuotation.invoicePdfFile?.url || viewingQuotation.invoicePdfFile?.dataUrl; if(src) {setViewingPdf({name: viewingQuotation.invoicePdfFile!.name, dataUrl: src}); setIsPdfViewerOpen(true);}}} className="text-sky-600 hover:underline flex items-center gap-1"><DocumentTextIcon className="w-4 h-4"/>הצג קובץ חשבונית</button></div>)}</div>)}</Modal>
-            <Modal isOpen={isPdfViewerOpen} onClose={() => setIsPdfViewerOpen(false)} title={viewingPdf?.name || ''} size="xl">{viewingPdf?.dataUrl && <iframe src={viewingPdf.dataUrl} className="w-full h-[75vh]" title={viewingPdf.name} />}</Modal>
+            <UniversalFileViewerModal 
+                isOpen={isPdfViewerOpen} 
+                onClose={() => setIsPdfViewerOpen(false)} 
+                file={viewingPdf ? { name: viewingPdf.name, dataUrl: viewingPdf.dataUrl, mimeType: 'application/pdf' } : null} 
+            />
             <Modal isOpen={isAiModalOpen} onClose={() => setIsAiModalOpen(false)} title="ייבוא הצעות מחיר (AI)">
                 <div className="space-y-4">
                     <p>בחר קובץ PDF או CSV המכיל טבלה של הצעות מחיר. המערכת תנסה לנתח את הנתונים ולהוסיף אותם אוטומטית.</p>

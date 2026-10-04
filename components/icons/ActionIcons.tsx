@@ -181,3 +181,10 @@ export const PencilScribbleIcon: React.FC<React.SVGProps<SVGSVGElement>> = (prop
     <path d="M3 21C6 19 9 22 12 20C14 18.7 15 19 16 19" stroke="#0284C7" strokeWidth="1.8" strokeLinecap="round" />
   </svg>
 );
+
+// Modern colored Arrow Path (Refresh) Icon
+export const ArrowPathIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" {...props}>
+    <path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+  </svg>
+);

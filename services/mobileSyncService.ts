@@ -1,7 +1,7 @@
 import { 
     Project, Report, Problem, FormTemplate, ProjectForm, FullAppBackup,
     Supplier, Quotation, Tenant, Worker, ProjectTodo, ProjectFile,
-    PreventiveEvent, BuildingSystemLog, Invoice, AppSettings, ProblemSeverity, QuotationStatus
+    PreventiveEvent, BuildingSystemLog, BuildingSystemType, Invoice, AppSettings, ProblemSeverity, QuotationStatus
 } from '../types';
 import { generateId } from '../utils/idGenerator';
 import { DEFAULT_SETTINGS, SETTINGS_ID, BACKUP_SCHEMA_VERSION } from '../constants';
@@ -340,6 +340,20 @@ export const isEntitySpecificFile = (doc: any, filePath?: string): { isSpecific:
 };
 
 /**
+ * Normalizes system type string into valid BuildingSystemType
+ */
+export const normalizeSystemType = (rawType: string = '', title: string = ''): BuildingSystemType => {
+    const combined = `${rawType} ${title}`.toLowerCase();
+    if (combined.includes('elevator') || combined.includes('מעלית') || combined.includes('מעלון')) return 'elevator';
+    if (combined.includes('generator') || combined.includes('גנרטור') || combined.includes('חירום')) return 'generator';
+    if (combined.includes('hvac') || combined.includes('מיזוג') || combined.includes('מזגן') || combined.includes('צילר') || combined.includes('אוורור')) return 'hvac';
+    if (combined.includes('fire') || combined.includes('אש') || combined.includes('כיבוי') || combined.includes('ספרינקלר') || combined.includes('מטף')) return 'fire_safety';
+    if (combined.includes('pump') || combined.includes('משאב') || combined.includes('מים') || combined.includes('מאגר') || combined.includes('water')) return 'water_pumps';
+    if (combined.includes('electric') || combined.includes('חשמל') || combined.includes('שנאי') || combined.includes('לוח')) return 'electrical';
+    return 'other';
+};
+
+/**
  * Normalizes priority from mobile string to ProblemSeverity
  */
 const mapPriority = (priority?: string): ProblemSeverity => {
@@ -402,18 +416,27 @@ export const parseMobileBackup = (raw: any): FullAppBackup => {
 
     const rawBuildings = findEntityList(raw, 'buildings', 'Building', 'building', 'properties', 'property', 'tbl_buildings', 'BuildingEntity');
     const rawTenants = findEntityList(raw, 'tenants', 'Tenant', 'tenant', 'residents', 'resident', 'occupants', 'renters', 'tbl_tenants', 'TenantEntity');
-    const rawIssues = findEntityList(raw, 'issues', 'Issue', 'issue', 'problems', 'problem', 'faults', 'fault', 'defects', 'defect', 'tasks', 'task', 'tickets', 'ticket', 'reports', 'tbl_issues', 'IssueEntity');
+    const rawIssues = findEntityList(raw, 'issues', 'Issue', 'issue', 'problems', 'problem', 'faults', 'fault', 'defects', 'defect', 'tasks', 'task', 'tickets', 'ticket', 'tbl_issues', 'IssueEntity');
     const rawProjects = findEntityList(raw, 'projects', 'Project', 'project', 'subProjects', 'sub_projects', 'subprojects', 'SubProject', 'SubProjects');
     const rawTodoItems = findEntityList(raw, 'todoItems', 'TodoItem', 'todo_items', 'todoitems', 'todos', 'todo', 'tasks', 'task', 'checklists', 'checklist', 'tbl_todo_items');
     const rawPreventive = findEntityList(raw, 'preventiveEvents', 'PreventiveEvent', 'preventive_events', 'preventiveevents', 'preventive', 'maintenance', 'maintenances', 'periodic_maintenance', 'tbl_preventive_events');
     const rawWorkers = findEntityList(raw, 'workers', 'Worker', 'worker', 'contractors', 'contractor', 'technicians', 'technician', 'professionals', 'employees', 'tbl_workers');
     const rawSuppliers = findEntityList(raw, 'suppliers', 'Supplier', 'supplier', 'vendors', 'vendor', 'providers', 'provider', 'tbl_suppliers');
     const rawInventory = findEntityList(raw, 'inventoryItems', 'InventoryItem', 'inventory_items', 'inventoryitems', 'inventory', 'items', 'item', 'stock', 'warehouse', 'materials', 'equipment', 'tbl_inventory');
-    const rawDocs = findEntityList(raw, 'documentFiles', 'DocumentFile', 'document_files', 'documentfiles', 'documents', 'document', 'files', 'file', 'attachments', 'attachment', 'media', 'tbl_documents');
+    const rawDocs = findEntityList(raw, 'documentFiles', 'DocumentFile', 'document_files', 'documentfiles', 'documents', 'document', 'tbl_documents');
     const rawInvoices = findEntityList(raw, 'invoices', 'Invoice', 'invoice', 'bills', 'bill', 'receipts', 'receipt', 'expenses', 'expense', 'payments', 'payment', 'tbl_invoices');
+    const rawQuotationsList = findEntityList(raw, 'quotations', 'Quotation', 'quotation', 'quotes', 'quote', 'bids', 'price_quotes', 'tbl_quotations');
     const rawFormTemplates = findEntityList(raw, 'formTemplates', 'FormTemplate', 'form_templates', 'formtemplates', 'forms', 'form', 'templates', 'template', 'tbl_form_templates');
-    const rawFilledForms = findEntityList(raw, 'filledForms', 'FilledForm', 'filled_forms', 'filledforms', 'inspections', 'inspection', 'inspection_reports', 'protocols', 'reports', 'tbl_filled_forms');
-    const rawSystemLogs = findEntityList(raw, 'buildingSystemLogs', 'BuildingSystemLog', 'building_system_logs', 'buildingsystemlogs', 'system_logs', 'systemlogs', 'systems', 'system', 'inspections', 'equipment', 'tbl_building_system_logs');
+    const rawFilledForms = findEntityList(raw, 'filledForms', 'FilledForm', 'filled_forms', 'filledforms', 'inspections', 'inspection', 'protocols', 'tbl_filled_forms');
+    const rawReports = findEntityList(raw, 'reports', 'Report', 'report', 'inspection_reports', 'inspectionreports', 'tbl_reports', 'building_reports');
+    const rawSurveys = findEntityList(raw, 'surveys', 'Survey', 'survey', 'building_surveys', 'buildingsurveys', 'tbl_surveys');
+    const rawInspections = findEntityList(raw, 'inspections', 'inspection', 'tbl_inspections', 'protocols', 'protocol', 'tbl_protocols', 'audits', 'audit');
+    const rawSystemLogs = findEntityList(
+        raw, 
+        'buildingSystemLogs', 'BuildingSystemLog', 'building_system_logs', 'buildingsystemlogs', 
+        'building_systems', 'buildingsystems', 'system_logs', 'systemlogs', 'systems', 'system', 
+        'building_system', 'equipment', 'tbl_building_systems', 'tbl_building_system_logs', 'tbl_systems', 'tbl_equipment'
+    );
     const rawSettings = raw.appSettings || raw.AppSettings || raw.app_settings || raw.settings || raw.preferences || raw.config || {};
     const unreferencedFiles: any[] = Array.isArray(raw.unreferencedFiles) ? raw.unreferencedFiles : [];
 
@@ -595,8 +618,8 @@ export const parseMobileBackup = (raw: any): FullAppBackup => {
                 };
             });
 
-        // Only append legitimate building document files that don't belong to other sections
-        if (bIdx === 0 && unreferencedFiles.length > 0) {
+        // Only append unreferenced files if the backup had NO explicit document records
+        if (rawDocs.length === 0 && bIdx === 0 && unreferencedFiles.length > 0) {
             unreferencedFiles
                 .filter((uf: any) => uf.isDocumentFile || (!uf.targetSection && !isEntitySpecificFile(uf).isSpecific))
                 .forEach((uf: any, ufIdx: number) => {
@@ -770,19 +793,21 @@ export const parseMobileBackup = (raw: any): FullAppBackup => {
             const matchedProj = projects.find(p => belongsToBuilding(log, p.id, p.name, projects.length));
             bId = matchedProj ? matchedProj.id : primaryProjectId;
         }
-        const certPath = getRowVal(log, 'certificatePath', 'certificate_path', 'certificateFile', 'filePath', 'file_path');
+        const certPath = getRowVal(log, 'certificatePath', 'certificate_path', 'certificateFile', 'filePath', 'file_path', 'documentPath');
+        const rawSysType = String(getRowVal(log, 'systemType', 'system_type', 'type') || '');
+        const sysTitle = String(getRowVal(log, 'title', 'systemName', 'system_name', 'name') || 'מערכת בניין');
         return {
             id: String(getRowVal(log, 'id', 'logId', 'log_id', 'systemId', 'system_id') || `sys-${idx + 1}`),
             buildingId: String(bId || ''),
-            systemType: getRowVal(log, 'systemType', 'system_type', 'type') || 'other',
-            title: getRowVal(log, 'title', 'systemName', 'system_name', 'name') || 'מערכת בניין',
+            systemType: normalizeSystemType(rawSysType, sysTitle),
+            title: sysTitle,
             lastInspectionDate: getRowVal(log, 'lastInspectionDate', 'last_inspection_date', 'lastDate', 'last_date'),
             nextInspectionDate: getRowVal(log, 'nextInspectionDate', 'next_inspection_date', 'nextDate', 'next_date'),
             technicianName: getRowVal(log, 'technicianName', 'technician_name', 'inspector'),
             technicianPhone: String(getRowVal(log, 'technicianPhone', 'technician_phone') || ''),
             status: getRowVal(log, 'status', 'condition') || 'תקין',
             notes: getRowVal(log, 'notes', 'comments', 'description') || '',
-            certificateFile: certPath ? { name: getRowVal(log, 'title') || 'אישור', mimeType: 'application/pdf', url: certPath } : undefined,
+            certificateFile: certPath ? { name: sysTitle, mimeType: 'application/pdf', url: certPath } : undefined,
             createdAt: getRowVal(log, 'createdAt', 'created_at') || now,
             updatedAt: getRowVal(log, 'updatedAt', 'updated_at') || now,
         };
@@ -835,8 +860,37 @@ export const parseMobileBackup = (raw: any): FullAppBackup => {
         };
     });
 
+    // Map direct Quotations if provided in backup
+    const directQuotations: Quotation[] = rawQuotationsList.map((q: any, idx: number) => {
+        let bId = getRowBuildingId(q);
+        if (!bId || !projects.some(p => p.id === bId)) {
+            const matchedProj = projects.find(p => belongsToBuilding(q, p.id, p.name, projects.length));
+            bId = matchedProj ? matchedProj.id : primaryProjectId;
+        }
+        const proj = projects.find(p => p.id === bId);
+        const qNum = String(getRowVal(q, 'quotationNumber', 'quotation_number', 'number', 'ref') || `Q-${idx + 1}`);
+        const price = typeof getRowVal(q, 'price', 'amount', 'total', 'cost') === 'number'
+            ? getRowVal(q, 'price', 'amount', 'total', 'cost')
+            : parseFloat(getRowVal(q, 'price', 'amount', 'total', 'cost')) || 0;
+        return {
+            id: String(getRowVal(q, 'id', 'quotationId', 'quotation_id') || `quot-${idx + 1}`),
+            projectId: String(bId || ''),
+            projectName: proj?.name || '',
+            date: getRowVal(q, 'date', 'quotationDate', 'created_at') || now.split('T')[0],
+            supplierName: getRowVal(q, 'supplierName', 'supplier_name', 'contractor', 'supplier') || 'ספק',
+            quotationNumber: qNum,
+            quotationName: getRowVal(q, 'quotationName', 'quotation_name', 'title') || `הצעה ${qNum}`,
+            group: getRowVal(q, 'group', 'category') || 'הצעות מחיר',
+            price,
+            pdfFile: { name: `הצעת_מחיר_${qNum}`, mimeType: 'application/pdf' },
+            status: (getRowVal(q, 'status') as QuotationStatus) || QuotationStatus.PENDING,
+            createdAt: getRowVal(q, 'createdAt', 'created_at') || now,
+            updatedAt: getRowVal(q, 'updatedAt', 'updated_at') || now,
+        };
+    });
+
     // Convert invoices also to quotations store so they appear in quotations list
-    const quotations: Quotation[] = invoices.map(inv => ({
+    const invoiceQuotations: Quotation[] = invoices.map(inv => ({
         id: inv.id,
         projectId: inv.buildingId,
         projectName: inv.projectName || '',
@@ -852,24 +906,184 @@ export const parseMobileBackup = (raw: any): FullAppBackup => {
         updatedAt: inv.updatedAt || now,
     }));
 
-    // Map Issues -> Reports & Problems
-    const reports: Report[] = [];
-    const problems: Problem[] = [];
-
-    // Group issues by buildingId
-    const issuesByBuilding: Record<string, any[]> = {};
-    rawIssues.forEach((issue: any) => {
-        let bId = getRowBuildingId(issue);
-        if (!bId || !projects.some(p => p.id === bId)) {
-            const matchedProj = projects.find(p => belongsToBuilding(issue, p.id, p.name, projects.length));
-            bId = matchedProj ? matchedProj.id : primaryProjectId;
+    const quotations: Quotation[] = [...directQuotations];
+    invoiceQuotations.forEach(iq => {
+        if (!quotations.some(q => q.id === iq.id || q.quotationNumber === iq.quotationNumber)) {
+            quotations.push(iq);
         }
-        if (!bId) bId = primaryProjectId;
-        if (!issuesByBuilding[bId]) issuesByBuilding[bId] = [];
-        issuesByBuilding[bId].push(issue);
     });
 
-    Object.entries(issuesByBuilding).forEach(([bId, issuesList]) => {
+    // Map Reports & Surveys
+    const reports: Report[] = [];
+    const problems: Problem[] = [];
+    const existingReportIds = new Set<string>();
+
+    const addReportItem = (r: any, defaultTitle: string, defaultType: any, defaultGroup?: string) => {
+        let bId = getRowBuildingId(r);
+        if (!bId || !projects.some(p => p.id === bId)) {
+            const matchedProj = projects.find(p => belongsToBuilding(r, p.id, p.name, projects.length));
+            bId = matchedProj ? matchedProj.id : primaryProjectId;
+        }
+        const repId = String(getRowVal(r, 'id', 'reportId', 'report_id', 'surveyId', 'survey_id') || `report-${reports.length + 1}`);
+        if (existingReportIds.has(repId)) return;
+        existingReportIds.add(repId);
+
+        const title = getRowVal(r, 'title', 'name', 'surveyName', 'subject') || defaultTitle;
+        const isSurvey = title.includes('סקר') || getRowVal(r, 'reportType') === 'survey' || getRowVal(r, 'group')?.includes('סקר') || defaultType === 'survey';
+        const repFiles: ProjectFile[] = Array.isArray(r.files) ? [...r.files] : [];
+
+        // Check if report has a direct file path
+        const rawFp = getRowVal(r, 'filePath', 'file_path', 'pdfPath', 'pdf_path', 'reportPath', 'report_path', 'documentPath');
+        if (rawFp && !repFiles.some(f => f.url === rawFp)) {
+            repFiles.push({
+                id: generateId(),
+                name: title || 'קובץ דוח/סקר',
+                mimeType: 'application/pdf',
+                url: rawFp,
+                group: isSurvey ? 'סקרי מבנה' : 'דוחות',
+                createdAt: getRowVal(r, 'date', 'createdAt') || now,
+            });
+        }
+
+        // Attach any document from rawDocs linked to this report
+        rawDocs.forEach((d: any) => {
+            const spec = isEntitySpecificFile(d);
+            if (spec.targetSection === 'reports' && (spec.targetId === repId || !spec.targetId)) {
+                const docUrl = getRowVal(d, 'filePath', 'file_path', 'path', 'url');
+                if (docUrl && !repFiles.some(f => f.url === docUrl)) {
+                    repFiles.push({
+                        id: String(getRowVal(d, 'id') || generateId()),
+                        name: getRowVal(d, 'name', 'title') || 'מסמך דוח מצורף',
+                        mimeType: getRowVal(d, 'fileType', 'mimeType') || 'application/pdf',
+                        url: docUrl,
+                        group: 'דוחות וסקרים',
+                        createdAt: getRowVal(d, 'uploadDate', 'createdAt') || now,
+                    });
+                }
+            }
+        });
+
+        reports.push({
+            id: repId,
+            projectId: String(bId || ''),
+            title,
+            date: getRowVal(r, 'date', 'reportDate', 'report_date', 'surveyDate', 'survey_date', 'createdAt', 'created_at') || now.split('T')[0],
+            description: getRowVal(r, 'description', 'notes', 'summary', 'details') || '',
+            group: getRowVal(r, 'group', 'category') || defaultGroup,
+            reportType: (getRowVal(r, 'reportType', 'report_type') as any) || (isSurvey ? 'survey' : defaultType),
+            surveyorName: getRowVal(r, 'surveyorName', 'surveyor_name', 'inspector', 'inspectorName'),
+            score: typeof getRowVal(r, 'score', 'rating') === 'number' ? getRowVal(r, 'score', 'rating') : undefined,
+            findings: getRowVal(r, 'findings', 'conclusion', 'summary', 'recommendations'),
+            files: repFiles,
+            createdAt: getRowVal(r, 'createdAt', 'created_at') || now,
+            updatedAt: getRowVal(r, 'updatedAt', 'updated_at') || now,
+        });
+    };
+
+    // 1. Direct reports from backup
+    rawReports.forEach((r: any) => addReportItem(r, 'דוח מבנה', 'standard', 'דוחות תקופתיים'));
+
+    // 2. Direct surveys from backup
+    rawSurveys.forEach((s: any) => addReportItem(s, 'סקר מבנה מקיף', 'survey', 'סקרי מבנה'));
+
+    // 3. Inspections / audits from backup
+    rawInspections.forEach((i: any) => addReportItem(i, 'ביקורת מבנה', 'inspection', 'ביקורות ותקנים'));
+
+    // Helper to map an issue into a problem object
+    const mapIssueToProblem = (issue: any, targetReportId: string, index: number): Problem => {
+        const problemId = String(getRowVal(issue, 'id', 'issueId', 'issue_id', 'problemId', 'problem_id') || generateId());
+        const images: any[] = [];
+        const photoPath = getRowVal(issue, 'photoPath', 'photo_path', 'photo', 'imagePath', 'image_path', 'image');
+        const afterPhotoPath = getRowVal(issue, 'afterPhotoPath', 'after_photo_path', 'afterPhoto', 'after_photo', 'repairPhoto');
+        if (photoPath) {
+            images.push({ id: generateId(), name: 'תמונה ראשונית', mimeType: 'image/jpeg', url: photoPath, createdAt: now });
+        }
+        if (afterPhotoPath) {
+            images.push({ id: generateId(), name: 'תמונה לאחר תיקון', mimeType: 'image/jpeg', url: afterPhotoPath, createdAt: now });
+        }
+
+        // Include any already-resolved images array from issue
+        if (Array.isArray(issue.images)) {
+            issue.images.forEach((img: any) => {
+                const imgUrl = typeof img === 'string' ? img : (img.url || img.filePath || img.dataUrl);
+                if (imgUrl && !images.some(i => i.url === imgUrl)) {
+                    images.push({
+                        id: generateId(),
+                        name: (typeof img === 'object' && img.name) ? img.name : 'תמונה',
+                        mimeType: (typeof img === 'object' && img.mimeType) ? img.mimeType : 'image/jpeg',
+                        url: imgUrl,
+                        createdAt: (typeof img === 'object' && img.createdAt) ? img.createdAt : now,
+                    });
+                }
+            });
+        }
+
+        // Include any document from rawDocs linked to this issue
+        rawDocs.forEach((d: any) => {
+            const spec = isEntitySpecificFile(d);
+            if (spec.targetSection === 'issues' && (spec.targetId === problemId || !spec.targetId)) {
+                const docUrl = getRowVal(d, 'filePath', 'file_path', 'path', 'url');
+                if (docUrl && !images.some(i => i.url === docUrl)) {
+                    images.push({
+                        id: String(getRowVal(d, 'id') || generateId()),
+                        name: getRowVal(d, 'name', 'title') || 'תמונה מצורפת',
+                        mimeType: getRowVal(d, 'fileType', 'mimeType') || 'image/jpeg',
+                        url: docUrl,
+                        createdAt: getRowVal(d, 'uploadDate', 'createdAt') || now,
+                    });
+                }
+            }
+        });
+
+        const issueTitle = getRowVal(issue, 'title', 'subject', 'name', 'headline');
+        const issueDesc = getRowVal(issue, 'description', 'details', 'notes', 'desc');
+        const apartmentNum = getRowVal(issue, 'apartmentNumber', 'apartment_number', 'apartment', 'unit', 'location');
+        const assignedTo = getRowVal(issue, 'assignedTo', 'assigned_to', 'worker', 'assignedWorker', 'contractor');
+        const cost = getRowVal(issue, 'cost', 'price', 'amount');
+        const status = String(getRowVal(issue, 'status', 'state') || '').toLowerCase();
+        const resolvedDate = getRowVal(issue, 'resolvedDate', 'resolved_date', 'completedDate', 'completed_date');
+        const isFixed = status === 'resolved' || status === 'נפתרה' || status === 'הושלם' || status === 'closed' || Boolean(resolvedDate);
+
+        return {
+            id: problemId,
+            reportId: targetReportId,
+            description: issueTitle ? `${issueTitle}${issueDesc ? ' - ' + issueDesc : ''}` : (issueDesc || 'תקלה'),
+            severity: mapPriority(getRowVal(issue, 'priority', 'severity', 'urgency', 'level')),
+            notes: [
+                apartmentNum ? `דירה/מיקום: ${apartmentNum}` : '',
+                assignedTo ? `איש מקצוע: ${assignedTo}` : '',
+                cost ? `עלות: ₪${cost}` : '',
+            ].filter(Boolean).join(' | '),
+            locationTag: apartmentNum ? `דירה ${apartmentNum}` : undefined,
+            images,
+            order: index + 1,
+            isFixed,
+            createdAt: getRowVal(issue, 'reportedDate', 'reported_date', 'date', 'createdAt', 'created_at') || now,
+            updatedAt: resolvedDate || now,
+        };
+    };
+
+    // Separate issues with direct reportId vs orphan issues
+    const unattachedIssuesByBuilding: Record<string, any[]> = {};
+    rawIssues.forEach((issue: any, idx: number) => {
+        const issueReportId = getRowVal(issue, 'reportId', 'report_id');
+        const matchedReport = issueReportId ? reports.find(r => r.id === String(issueReportId)) : null;
+        if (matchedReport) {
+            problems.push(mapIssueToProblem(issue, matchedReport.id, idx));
+        } else {
+            let bId = getRowBuildingId(issue);
+            if (!bId || !projects.some(p => p.id === bId)) {
+                const matchedProj = projects.find(p => belongsToBuilding(issue, p.id, p.name, projects.length));
+                bId = matchedProj ? matchedProj.id : primaryProjectId;
+            }
+            if (!bId) bId = primaryProjectId;
+            if (!unattachedIssuesByBuilding[bId]) unattachedIssuesByBuilding[bId] = [];
+            unattachedIssuesByBuilding[bId].push(issue);
+        }
+    });
+
+    // Create synthesized reports for unattached issues
+    Object.entries(unattachedIssuesByBuilding).forEach(([bId, issuesList]) => {
         const reportId = generateId();
         const project = projects.find(p => p.id === bId);
         const reportDate = getRowVal(issuesList[0], 'reportedDate', 'reported_date', 'date', 'createdAt', 'created_at') || now.split('T')[0];
@@ -905,76 +1119,7 @@ export const parseMobileBackup = (raw: any): FullAppBackup => {
         });
 
         issuesList.forEach((issue: any, index: number) => {
-            const problemId = String(getRowVal(issue, 'id', 'issueId', 'issue_id', 'problemId', 'problem_id') || generateId());
-            const images: any[] = [];
-            const photoPath = getRowVal(issue, 'photoPath', 'photo_path', 'photo', 'imagePath', 'image_path', 'image');
-            const afterPhotoPath = getRowVal(issue, 'afterPhotoPath', 'after_photo_path', 'afterPhoto', 'after_photo', 'repairPhoto');
-            if (photoPath) {
-                images.push({ id: generateId(), name: 'תמונה ראשונית', mimeType: 'image/jpeg', url: photoPath, createdAt: now });
-            }
-            if (afterPhotoPath) {
-                images.push({ id: generateId(), name: 'תמונה לאחר תיקון', mimeType: 'image/jpeg', url: afterPhotoPath, createdAt: now });
-            }
-
-            // Include any already-resolved images array from issue
-            if (Array.isArray(issue.images)) {
-                issue.images.forEach((img: any) => {
-                    const imgUrl = typeof img === 'string' ? img : (img.url || img.filePath || img.dataUrl);
-                    if (imgUrl && !images.some(i => i.url === imgUrl)) {
-                        images.push({
-                            id: generateId(),
-                            name: (typeof img === 'object' && img.name) ? img.name : 'תמונה',
-                            mimeType: (typeof img === 'object' && img.mimeType) ? img.mimeType : 'image/jpeg',
-                            url: imgUrl,
-                            createdAt: (typeof img === 'object' && img.createdAt) ? img.createdAt : now,
-                        });
-                    }
-                });
-            }
-
-            // Include any document from rawDocs linked to this issue
-            rawDocs.forEach((d: any) => {
-                const spec = isEntitySpecificFile(d);
-                if (spec.targetSection === 'issues' && (spec.targetId === problemId || !spec.targetId)) {
-                    const docUrl = getRowVal(d, 'filePath', 'file_path', 'path', 'url');
-                    if (docUrl && !images.some(i => i.url === docUrl)) {
-                        images.push({
-                            id: String(getRowVal(d, 'id') || generateId()),
-                            name: getRowVal(d, 'name', 'title') || 'תמונה מצורפת',
-                            mimeType: getRowVal(d, 'fileType', 'mimeType') || 'image/jpeg',
-                            url: docUrl,
-                            createdAt: getRowVal(d, 'uploadDate', 'createdAt') || now,
-                        });
-                    }
-                }
-            });
-
-            const issueTitle = getRowVal(issue, 'title', 'subject', 'name', 'headline');
-            const issueDesc = getRowVal(issue, 'description', 'details', 'notes', 'desc');
-            const apartmentNum = getRowVal(issue, 'apartmentNumber', 'apartment_number', 'apartment', 'unit', 'location');
-            const assignedTo = getRowVal(issue, 'assignedTo', 'assigned_to', 'worker', 'assignedWorker', 'contractor');
-            const cost = getRowVal(issue, 'cost', 'price', 'amount');
-            const status = String(getRowVal(issue, 'status', 'state') || '').toLowerCase();
-            const resolvedDate = getRowVal(issue, 'resolvedDate', 'resolved_date', 'completedDate', 'completed_date');
-            const isFixed = status === 'resolved' || status === 'נפתרה' || status === 'הושלם' || status === 'closed' || Boolean(resolvedDate);
-
-            problems.push({
-                id: problemId,
-                reportId,
-                description: issueTitle ? `${issueTitle}${issueDesc ? ' - ' + issueDesc : ''}` : (issueDesc || 'תקלה'),
-                severity: mapPriority(getRowVal(issue, 'priority', 'severity', 'urgency', 'level')),
-                notes: [
-                    apartmentNum ? `דירה/מיקום: ${apartmentNum}` : '',
-                    assignedTo ? `איש מקצוע: ${assignedTo}` : '',
-                    cost ? `עלות: ₪${cost}` : '',
-                ].filter(Boolean).join(' | '),
-                locationTag: apartmentNum ? `דירה ${apartmentNum}` : undefined,
-                images,
-                order: index + 1,
-                isFixed,
-                createdAt: getRowVal(issue, 'reportedDate', 'reported_date', 'date', 'createdAt', 'created_at') || now,
-                updatedAt: resolvedDate || now,
-            });
+            problems.push(mapIssueToProblem(issue, reportId, index));
         });
     });
 
@@ -1261,26 +1406,36 @@ export const createUniversalSyncBackup = (rawBackup: any): any => {
         settings,
         todoItems,
         preventiveEvents: fullBackup.preventiveEvents || [],
-        workers: (projects || []).flatMap(p => p.workers || []).map(w => ({
-            id: w.id,
-            name: w.name,
-            specialty: w.address,
-            phone: w.phone,
-            email: w.email,
-            hourlyRate: 0,
-            insuranceExpiryDate: w.safetyPermit?.validUntil || '',
-            notes: '',
-            certificatePath: w.photo?.url || '',
-        })),
+        workers: (() => {
+            const rawList = (projects || []).flatMap(p => p.workers || []);
+            const map = new Map<string, Worker>();
+            rawList.forEach(w => { if (w && w.id) map.set(w.id, w); });
+            return Array.from(map.values()).map(w => ({
+                id: w.id,
+                name: w.name,
+                specialty: w.specialty || w.role || w.address || '',
+                phone: w.phone || '',
+                email: w.email || '',
+                hourlyRate: w.hourlyRate ?? 0,
+                insuranceExpiryDate: w.insuranceExpiryDate || w.safetyPermit?.validUntil || '',
+                notes: w.notes || '',
+                certificatePath: w.certificatePath || w.photo?.url || '',
+                role: w.role || '',
+                idNumber: w.idNumber || '',
+                workerNumber: w.workerNumber || '',
+                electricityIdNumber: w.electricityIdNumber || '',
+                currentWorkingStatus: w.currentWorkingStatus || 'Active',
+            }));
+        })(),
         suppliers: (suppliers || []).map(s => ({
             id: s.id,
             name: s.name,
-            category: s.group,
-            contactPerson: '',
-            phone: s.phone,
-            email: s.email,
+            category: s.group || s.serviceType || 'כללי',
+            contactPerson: s.contactPerson || '',
+            phone: s.phone || '',
+            email: s.email || '',
             address: s.address || '',
-            contractFilePath: '',
+            contractFilePath: s.contractFilePath || '',
         })),
         inventoryItems,
         documentFiles,
@@ -1510,6 +1665,114 @@ export const exportToMarkdown = (rawBackup: any): string => {
     });
     md += `\n---\n\n`;
 
+    // 8. Workers & Technicians
+    const allWorkers: Worker[] = [];
+    (fullBackup.projects || []).forEach(p => {
+        (p.workers || []).forEach(w => {
+            if (!allWorkers.some(existing => existing.id === w.id)) {
+                allWorkers.push(w);
+            }
+        });
+    });
+    md += `## 8. Maintenance Workers & Contractors (עובדי תחזוקה וקבלנים)\n`;
+    md += `**Total Workers:** ${allWorkers.length}\n\n`;
+    md += `| ID | Worker Name | Specialty / Role | Phone | Email | Hourly Rate | ID Number | Status |\n`;
+    md += `|---|---|---|---|---|---|---|---|\n`;
+    allWorkers.forEach(w => {
+        md += `| ${w.id} | ${w.name} | ${w.specialty || w.role || '-'} | ${w.phone || '-'} | ${w.email || '-'} | ₪${w.hourlyRate ?? 0} | ${w.idNumber || '-'} | ${w.currentWorkingStatus || 'פעיל'} |\n`;
+    });
+    md += `\n---\n\n`;
+
+    // 9. Inventory & Maintenance Equipment
+    const allInventory: any[] = [];
+    (fullBackup.projects || []).forEach(p => {
+        (p.inventory || []).forEach(loc => {
+            (loc.itemGroups || []).forEach(grp => {
+                (grp.items || []).forEach(item => {
+                    allInventory.push({ ...item, buildingName: p.name, bId: p.id, locName: loc.name, grpName: grp.name });
+                });
+            });
+        });
+    });
+    md += `## 9. Inventory & Maintenance Equipment (מלאי וציוד תחזוקה)\n`;
+    md += `**Total Inventory Items:** ${allInventory.length}\n\n`;
+    md += `| Building | Item Name | Model / Brand | Quantity | Location / Group | Check Status | Notes |\n`;
+    md += `|---|---|---|---|---|---|---|\n`;
+    allInventory.forEach(inv => {
+        md += `| ${inv.buildingName} | ${inv.name} | ${inv.model || inv.company || '-'} | ${inv.quantity ?? 0} | ${inv.locName} - ${inv.grpName} | ${inv.checkStatus || 'תקין'} | ${(inv.description || '').replace(/\n/g, ' ')} |\n`;
+    });
+    md += `\n---\n\n`;
+
+    // 10. Todo & Action Items
+    const allTodos: any[] = [];
+    (fullBackup.projects || []).forEach(p => {
+        (p.todos || []).forEach(t => {
+            allTodos.push({ ...t, buildingName: p.name, bId: p.id });
+        });
+    });
+    md += `## 10. Tasks & Action Items (משימות ומטלות)\n`;
+    md += `**Total Tasks:** ${allTodos.length}\n\n`;
+    md += `| Building | Task Description | Due Date | Completed | Category / Group |\n`;
+    md += `|---|---|---|---|---|\n`;
+    allTodos.forEach(t => {
+        md += `| ${t.buildingName} | ${(t.description || '').replace(/\n/g, ' ')} | ${t.dueDate || '-'} | ${t.isCompleted ? 'כן' : 'לא'} | ${t.group || 'כללי'} |\n`;
+    });
+    md += `\n---\n\n`;
+
+    // 11. Projects & Sub-Projects
+    const allSubProjects: any[] = [];
+    (fullBackup.projects || []).forEach(p => {
+        (p.subProjects || []).forEach(sp => {
+            allSubProjects.push({ ...sp, buildingName: p.name, bId: p.id });
+        });
+    });
+    md += `## 11. Projects & Sub-Projects (פרויקטים ותתי-פרויקטים)\n`;
+    md += `**Total Sub-Projects:** ${allSubProjects.length}\n\n`;
+    md += `| Building | Project Title | Description | Status | Budget |\n`;
+    md += `|---|---|---|---|---|\n`;
+    allSubProjects.forEach(sp => {
+        md += `| ${sp.buildingName} | ${sp.name} | ${(sp.description || '').replace(/\n/g, ' ')} | ${sp.status || 'בביצוע'} | ₪${sp.budget ?? 0} |\n`;
+    });
+    md += `\n---\n\n`;
+
+    // 12. Building Documents & Files
+    const allDocs: any[] = [];
+    (fullBackup.projects || []).forEach(p => {
+        (p.files || []).forEach(f => {
+            allDocs.push({ ...f, buildingName: p.name, bId: p.id });
+        });
+    });
+    md += `## 12. Building Documents & Files (מסמכים וקבצי בניין)\n`;
+    md += `**Total Documents:** ${allDocs.length}\n\n`;
+    md += `| Building | Document Name | Category / Folder | Upload Date | Due Date |\n`;
+    md += `|---|---|---|---|---|\n`;
+    allDocs.forEach(d => {
+        md += `| ${d.buildingName} | ${d.name} | ${d.group || 'כללי'} | ${d.createdAt ? d.createdAt.split('T')[0] : '-'} | ${d.dueDate || '-'} |\n`;
+    });
+    md += `\n---\n\n`;
+
+    // 13. Quotations & Price Quotes
+    const quotations = fullBackup.quotations || [];
+    md += `## 13. Quotations & Price Quotes (הצעות מחיר)\n`;
+    md += `**Total Quotations:** ${quotations.length}\n\n`;
+    md += `| Quotation # | Building | Supplier / Contractor | Amount | Status | Date |\n`;
+    md += `|---|---|---|---|---|---|\n`;
+    quotations.forEach(q => {
+        md += `| ${q.quotationNumber} | ${q.projectName || '-'} | ${q.supplierName || '-'} | ₪${q.price ?? 0} | ${q.status} | ${q.date || '-'} |\n`;
+    });
+    md += `\n---\n\n`;
+
+    // 14. Form Templates
+    const templates = fullBackup.formTemplates || [];
+    md += `## 14. Form Templates & Protocols (תבניות טפסים ופרוטוקולים)\n`;
+    md += `**Total Templates:** ${templates.length}\n\n`;
+    md += `| Template ID | Template Name | Description | Groups Count | Created Date |\n`;
+    md += `|---|---|---|---|---|\n`;
+    templates.forEach(tpl => {
+        md += `| ${tpl.id} | ${tpl.name} | ${(tpl.description || '').replace(/\n/g, ' ')} | ${(tpl.groups || []).length} | ${tpl.createdAt ? tpl.createdAt.split('T')[0] : '-'} |\n`;
+    });
+    md += `\n---\n\n`;
+
     // Embedded Universal Sync Payload (enables 100% loss-free roundtrip restore)
     const jsonStr = JSON.stringify(universal);
     md += `<!-- BMANAGER_SYNC_PAYLOAD_START\n${jsonStr}\nBMANAGER_SYNC_PAYLOAD_END -->\n`;
@@ -1549,6 +1812,13 @@ export const parseMarkdownBackup = (mdContent: string): FullAppBackup => {
     const parsedPreventive: any[] = [];
     const parsedSuppliers: any[] = [];
     const parsedInvoices: any[] = [];
+    const parsedWorkers: any[] = [];
+    const parsedInventory: any[] = [];
+    const parsedTodos: any[] = [];
+    const parsedSubProjects: any[] = [];
+    const parsedDocs: any[] = [];
+    const parsedQuotations: any[] = [];
+    const parsedTemplates: any[] = [];
 
     lines.forEach(line => {
         if (line.startsWith('## 1.')) currentSection = 'buildings';
@@ -1558,7 +1828,14 @@ export const parseMarkdownBackup = (mdContent: string): FullAppBackup => {
         else if (line.startsWith('## 5.')) currentSection = 'preventive';
         else if (line.startsWith('## 6.')) currentSection = 'suppliers';
         else if (line.startsWith('## 7.')) currentSection = 'invoices';
-        else if (line.startsWith('|') && !line.includes('---') && !line.includes('Building Name') && !line.includes('Tenant Name') && !line.includes('Severity') && !line.includes('System Type') && !line.includes('Event Title') && !line.includes('Supplier Name') && !line.includes('Invoice #')) {
+        else if (line.startsWith('## 8.')) currentSection = 'workers';
+        else if (line.startsWith('## 9.')) currentSection = 'inventory';
+        else if (line.startsWith('## 10.')) currentSection = 'todos';
+        else if (line.startsWith('## 11.')) currentSection = 'subprojects';
+        else if (line.startsWith('## 12.')) currentSection = 'docs';
+        else if (line.startsWith('## 13.')) currentSection = 'quotations';
+        else if (line.startsWith('## 14.')) currentSection = 'templates';
+        else if (line.startsWith('|') && !line.includes('---') && !line.includes('Building Name') && !line.includes('Tenant Name') && !line.includes('Severity') && !line.includes('System Type') && !line.includes('Event Title') && !line.includes('Supplier Name') && !line.includes('Invoice #') && !line.includes('Worker Name') && !line.includes('Item Name') && !line.includes('Task Description') && !line.includes('Project Title') && !line.includes('Document Name') && !line.includes('Quotation #') && !line.includes('Template ID')) {
             const cols = line.split('|').map(c => c.trim()).filter((_, idx, arr) => idx > 0 && idx < arr.length - 1);
             if (cols.length >= 2) {
                 if (currentSection === 'buildings') {
@@ -1642,6 +1919,79 @@ export const parseMarkdownBackup = (mdContent: string): FullAppBackup => {
                         date: cols[4] || now.split('T')[0],
                         status: cols[5] || 'ממתין',
                     });
+                } else if (currentSection === 'workers') {
+                    // ID | Worker Name | Specialty / Role | Phone | Email | Hourly Rate | ID Number | Status
+                    parsedWorkers.push({
+                        id: cols[0] || generateId(),
+                        name: cols[1] || 'עובד',
+                        specialty: cols[2] !== '-' ? cols[2] : '',
+                        phone: cols[3] !== '-' ? cols[3] : '',
+                        email: cols[4] !== '-' ? cols[4] : '',
+                        hourlyRate: parseFloat((cols[5] || '').replace(/[^\d.]/g, '')) || 0,
+                        idNumber: cols[6] !== '-' ? cols[6] : '',
+                        currentWorkingStatus: cols[7] || 'Active',
+                    });
+                } else if (currentSection === 'inventory') {
+                    // Building | Item Name | Model / Brand | Quantity | Location / Group | Check Status | Notes
+                    parsedInventory.push({
+                        id: generateId(),
+                        buildingName: cols[0],
+                        name: cols[1] || 'פריט מלאי',
+                        model: cols[2] !== '-' ? cols[2] : '',
+                        quantity: parseInt((cols[3] || '').replace(/[^\d]/g, '')) || 0,
+                        location: cols[4] !== '-' ? cols[4] : '',
+                        checkStatus: cols[5] === 'דורש תיקון' ? 'דורש תיקון' : 'תקין',
+                        description: cols[6] !== '-' ? cols[6] : '',
+                    });
+                } else if (currentSection === 'todos') {
+                    // Building | Task Description | Due Date | Completed | Category / Group
+                    parsedTodos.push({
+                        id: generateId(),
+                        buildingName: cols[0],
+                        title: cols[1] || 'משימה',
+                        dueDate: cols[2] !== '-' ? cols[2] : '',
+                        isDone: cols[3] === 'כן' || cols[3] === 'true',
+                        category: cols[4] !== '-' ? cols[4] : 'כללי',
+                    });
+                } else if (currentSection === 'subprojects') {
+                    // Building | Project Title | Description | Status | Budget
+                    parsedSubProjects.push({
+                        id: generateId(),
+                        buildingName: cols[0],
+                        title: cols[1] || 'פרויקט משנה',
+                        description: cols[2] !== '-' ? cols[2] : '',
+                        status: cols[3] || 'בביצוע',
+                        estimatedBudget: parseFloat((cols[4] || '').replace(/[^\d.]/g, '')) || 0,
+                    });
+                } else if (currentSection === 'docs') {
+                    // Building | Document Name | Category / Folder | Upload Date | Due Date
+                    parsedDocs.push({
+                        id: generateId(),
+                        buildingName: cols[0],
+                        title: cols[1] || 'מסמך',
+                        category: cols[2] !== '-' ? cols[2] : 'כללי',
+                        uploadDate: cols[3] !== '-' ? cols[3] : now,
+                        dueDate: cols[4] !== '-' ? cols[4] : undefined,
+                    });
+                } else if (currentSection === 'quotations') {
+                    // Quotation # | Building | Supplier / Contractor | Amount | Status | Date
+                    parsedQuotations.push({
+                        id: generateId(),
+                        quotationNumber: cols[0] || generateId(),
+                        buildingName: cols[1],
+                        supplierName: cols[2] !== '-' ? cols[2] : '',
+                        amount: parseFloat((cols[3] || '').replace(/[^\d.]/g, '')) || 0,
+                        status: cols[4] || QuotationStatus.PENDING,
+                        date: cols[5] !== '-' ? cols[5] : now.split('T')[0],
+                    });
+                } else if (currentSection === 'templates') {
+                    // Template ID | Template Name | Description | Groups Count | Created Date
+                    parsedTemplates.push({
+                        id: cols[0] || generateId(),
+                        title: cols[1] || 'תבנית טופס',
+                        description: cols[2] !== '-' ? cols[2] : '',
+                        createdAt: cols[4] !== '-' ? cols[4] : now,
+                    });
                 }
             }
         }
@@ -1656,6 +2006,13 @@ export const parseMarkdownBackup = (mdContent: string): FullAppBackup => {
         preventiveEvents: parsedPreventive,
         suppliers: parsedSuppliers,
         invoices: parsedInvoices,
+        workers: parsedWorkers,
+        inventoryItems: parsedInventory,
+        todoItems: parsedTodos,
+        projects: parsedSubProjects,
+        documentFiles: parsedDocs,
+        quotations: parsedQuotations,
+        formTemplates: parsedTemplates,
         backupDate: now,
     };
 

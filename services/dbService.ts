@@ -882,7 +882,7 @@ export const exportAllData = async (): Promise<FullAppBackup> => {
         version: BACKUP_SCHEMA_VERSION,
     };
 
-    return baseBackup;
+    return createUniversalSyncBackup(baseBackup);
 };
 
 export const exportAllDataAsMarkdown = async (): Promise<string> => {

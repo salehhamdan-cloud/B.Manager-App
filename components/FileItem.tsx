@@ -4,27 +4,11 @@ import { getFileValidityStatus, formatDate } from '../utils/dateFormatter';
 import { EyeIcon, ArrowDownTrayIcon, TrashIcon, PencilIcon, ChevronDownIcon, ChevronUpIcon } from './icons/ActionIcons';
 import { SettingsIcon, FolderIcon } from './icons/GeneralIcons';
 import { isMimeTypeViewable } from '../utils/fileUtils';
-import Modal from './common/Modal';
+import UniversalFileViewerModal from './common/UniversalFileViewerModal';
 
 // A local, reusable viewer modal that can handle both current and historical files.
 const FileViewerModal: React.FC<{ file: ProjectFile | HistoricalFile | null; onClose: () => void }> = ({ file, onClose }) => {
-    if (!file) return null;
-    const fileSrc = file.url || ('dataUrl' in file ? file.dataUrl : undefined);
-    return (
-        <Modal isOpen={!!file} onClose={onClose} title={`תצוגה מקדימה: ${file.name}`} size="xl">
-            <div className="w-full h-[75vh] bg-slate-200 rounded-md">
-                {fileSrc && file.mimeType.startsWith('image/') ? (
-                    <img src={fileSrc} alt={file.name} className="w-full h-full object-contain" />
-                ) : fileSrc && file.mimeType === 'application/pdf' ? (
-                    <iframe src={fileSrc} title={file.name} className="w-full h-full border-0" />
-                ) : (
-                    <div className="flex items-center justify-center h-full text-slate-600">
-                        <p>לא ניתן להציג תצוגה מקדימה עבור קובץ מסוג זה.</p>
-                    </div>
-                )}
-            </div>
-        </Modal>
-    );
+    return <UniversalFileViewerModal isOpen={!!file} onClose={onClose} file={file} />;
 };
 
 

@@ -1,10 +1,10 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { ArchiveBoxIcon, ClipboardDocumentListIcon, SettingsIcon, CalendarDaysIcon } from './icons/GeneralIcons';
+import { ArchiveBoxIcon, ClipboardDocumentListIcon, SettingsIcon, CalendarDaysIcon, HomeIcon, WrenchScrewdriverIcon } from './icons/GeneralIcons';
 import { TruckIcon, ReceiptPercentIcon, CalculatorIcon } from './icons/BusinessIcons';
 import { UserGroupIcon, IdentificationIcon } from './icons/UserIcons';
 import { useSettings } from '../contexts/SettingsContext';
-import { ChartPieIcon, QueueListIcon, RectangleGroupIcon } from './icons/NavigationIcons';
+import { ChartPieIcon, QueueListIcon, RectangleGroupIcon, FolderIcon, DocumentChartBarIcon, ClipboardDocumentCheckIcon } from './icons/NavigationIcons';
 import { InformationCircleIcon, XMarkIcon } from './icons/FeedbackIcons';
 import { DocumentDuplicateIcon, ArrowDownTrayIcon } from './icons/ActionIcons';
 import { SparklesIcon } from './icons/AiIcons';
@@ -23,10 +23,15 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, installPrompt, onIns
     {
       title: 'תפעול ונכסים',
       items: [
+        { to: '/', icon: <HomeIcon className="w-5 h-5" />, label: 'מבנים ונכסים' },
         { to: '/dashboard', icon: <ChartPieIcon className="w-5 h-5" />, label: 'לוח בקרה ראשי' },
+        { to: '/all-problems-checklist', icon: <ClipboardDocumentCheckIcon className="w-5 h-5" />, label: 'תקלות וקריאות שירות' },
+        { to: '/all-reports', icon: <DocumentChartBarIcon className="w-5 h-5" />, label: 'דוחות וסקרי מבנה' },
+        { to: '/all-building-systems', icon: <WrenchScrewdriverIcon className="w-5 h-5" />, label: 'מערכות תשתית ובטיחות' },
         { to: '/calendar', icon: <CalendarDaysIcon className="w-5 h-5" />, label: 'לוח תחזוקה מונעת' },
         { to: '/all-sub-projects', icon: <RectangleGroupIcon className="w-5 h-5" />, label: 'פרויקטי משנה' },
         { to: '/all-todos', icon: <QueueListIcon className="w-5 h-5" />, label: 'משימות תפעוליות' },
+        { to: '/all-files', icon: <FolderIcon className="w-5 h-5" />, label: 'מסמכים וקבצי בניין' },
       ]
     },
     {
@@ -40,11 +45,11 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, installPrompt, onIns
       ]
     },
     {
-      title: 'טפסים ומלאי',
+      title: 'טפסים, סקרים ומלאי',
       items: [
-        { to: '/all-forms', icon: <DocumentDuplicateIcon className="w-5 h-5" />, label: 'טפסים מלאים' },
-        { to: '/form-templates', icon: <ClipboardDocumentListIcon className="w-5 h-5" />, label: 'תבניות טפסים' },
-        { to: '/all-inventory', icon: <ArchiveBoxIcon className="w-5 h-5" />, label: 'מלאי חלפים' },
+        { to: '/all-forms', icon: <DocumentDuplicateIcon className="w-5 h-5" />, label: 'שאלוני ביקורת וסקרים' },
+        { to: '/form-templates', icon: <ClipboardDocumentListIcon className="w-5 h-5" />, label: 'תבניות סקרים וטפסים' },
+        { to: '/all-inventory', icon: <ArchiveBoxIcon className="w-5 h-5" />, label: 'מלאי חלפים וציוד' },
         { to: '/order-list', icon: <ClipboardDocumentListIcon className="w-5 h-5" />, label: 'פריטים להזמנה' },
       ]
     },
@@ -52,7 +57,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, installPrompt, onIns
       title: 'חכמה ומערכת',
       items: [
         { to: '/ai-smart-import', icon: <SparklesIcon className="w-5 h-5" />, label: 'ייבוא חכם ב-AI ✨' },
-        { to: '/settings', icon: <SettingsIcon className="w-5 h-5" />, label: 'הגדרות וגיבוי' },
+        { to: '/settings', icon: <SettingsIcon className="w-5 h-5" />, label: 'הגדרות וסנכרון גיבויים' },
         { to: '/about', icon: <InformationCircleIcon className="w-5 h-5" />, label: 'אודות המערכת' },
       ]
     }

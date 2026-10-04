@@ -7,6 +7,7 @@ import { useToast } from '../contexts/ToastContext';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import { PlusIcon, PencilIcon, TrashIcon } from '../components/icons/ActionIcons';
 import Modal from '../components/common/Modal';
+import UniversalFileViewerModal from '../components/common/UniversalFileViewerModal';
 import { generateId } from '../utils/idGenerator';
 import ImageUploader from '../components/common/ImageUploader';
 import { formatDate } from '../utils/dateFormatter';
@@ -278,9 +279,11 @@ export const ProjectInventoryItemsPage: React.FC = () => {
                 </div>
             </Modal>
             
-            <Modal isOpen={isPdfViewerOpen} onClose={() => setIsPdfViewerOpen(false)} title={`מדריך: ${viewingPdf?.name}`} size="xl">
-                {viewingPdf?.dataUrl && <iframe src={viewingPdf.dataUrl} title={viewingPdf.name} className="w-full h-[75vh]" frameBorder="0"/>}
-            </Modal>
+            <UniversalFileViewerModal
+                isOpen={isPdfViewerOpen}
+                onClose={() => setIsPdfViewerOpen(false)}
+                file={viewingPdf ? { name: viewingPdf.name, dataUrl: viewingPdf.dataUrl, mimeType: 'application/pdf' } : null}
+            />
             <style>{`
                 .input-class { display: block; width: 100%; border: 1px solid #cbd5e1; border-radius: 0.375rem; padding: 0.5rem 0.75rem; }
                 .file-input-class { display: block; width: 100%; text-sm text-slate-500 file:mr-4 file:rtl:ml-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-sky-50 file:text-sky-700 hover:file:bg-sky-100 }

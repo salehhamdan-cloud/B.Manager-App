@@ -4,10 +4,11 @@ import { Report, Problem, Project, FormTemplate, ProjectForm, ProjectFormWithTem
 import * as dbService from '../services/dbService';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import Modal from '../components/common/Modal';
+import UniversalFileViewerModal from '../components/common/UniversalFileViewerModal';
 import { useToast } from '../contexts/ToastContext';
 import { formatDate, formatDateTime } from '../utils/dateFormatter';
-import { PlusIcon, ArrowDownTrayIcon, PencilIcon, TrashIcon } from '../components/icons/ActionIcons';
-import { ClipboardDocumentCheckIcon, ClipboardDocumentListIcon } from '../components/icons/NavigationIcons';
+import { PlusIcon, ArrowDownTrayIcon, PencilIcon, TrashIcon, EyeIcon } from '../components/icons/ActionIcons';
+import { ClipboardDocumentCheckIcon, ClipboardDocumentListIcon, FolderIcon } from '../components/icons/NavigationIcons';
 import { DocumentScannerIcon } from '../components/icons/ScannerIcons';
 import { generateReportPdf, generatePdfFromImages } from '../services/pdfService';
 import { useSettings } from '../contexts/SettingsContext';
@@ -47,6 +48,7 @@ const ReportDetailPage: React.FC = () => {
   const [reportSummary, setReportSummary] = useState('');
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [currentReportData, setCurrentReportData] = useState<Partial<Report>>({});
+  const [viewingFile, setViewingFile] = useState<ProjectFile | null>(null);
   
   const dashboardChartRef = useRef<HTMLCanvasElement>(null);
 
@@ -223,6 +225,31 @@ const ReportDetailPage: React.FC = () => {
     setCurrentReportData({ ...report, description: reportSummary });
     setIsEditModalOpen(true);
   };
+
+  const handleSaveReportEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!report || !currentReportData.title) return;
+    try {
+      const updatedReport: Report = {
+        ...report,
+        title: currentReportData.title,
+        date: currentReportData.date ? new Date(currentReportData.date).toISOString() : report.date,
+        description: currentReportData.description || '',
+        group: currentReportData.group?.trim() || undefined,
+        reportType: currentReportData.reportType || report.reportType || 'standard',
+        surveyorName: currentReportData.surveyorName?.trim() || undefined,
+        score: currentReportData.score !== undefined && currentReportData.score !== null && String(currentReportData.score) !== '' ? Number(currentReportData.score) : undefined,
+        findings: currentReportData.findings?.trim() || undefined,
+        updatedAt: new Date().toISOString(),
+      };
+      await dbService.updateReport(updatedReport);
+      setReport(updatedReport);
+      setIsEditModalOpen(false);
+      addToast('פרטי הדוח עודכנו בהצלחה', 'success');
+    } catch {
+      addToast('שגיאה בעדכון פרטי הדוח', 'error');
+    }
+  };
   
   const handleScannerSave = async (pages: DocumentPage[], fileName: string) => {
     addToast('יוצר קובץ PDF...', 'info');
@@ -262,14 +289,52 @@ const ReportDetailPage: React.FC = () => {
 
       <section className="bg-white p-6 sm:p-8 rounded-3xl shadow-xs border border-slate-200/90">
         <div className="flex justify-between items-start flex-wrap gap-4">
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-black text-slate-800 tracking-tight">{report.title}</h1>
-            <p className="text-xs sm:text-sm text-slate-500 mt-1">
+          <div className="space-y-2">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h1 className="text-2xl sm:text-3xl font-black text-slate-800 tracking-tight">{report.title}</h1>
+              {report.reportType === 'survey' && (
+                <span className="text-xs font-bold px-3 py-1 rounded-full bg-amber-50 text-amber-800 border border-amber-200">
+                  🔍 סקר מבנה מקיף
+                </span>
+              )}
+              {report.reportType === 'inspection' && (
+                <span className="text-xs font-bold px-3 py-1 rounded-full bg-indigo-50 text-indigo-800 border border-indigo-200">
+                  📋 ביקורת מבנה
+                </span>
+              )}
+              {report.reportType === 'fire_safety' && (
+                <span className="text-xs font-bold px-3 py-1 rounded-full bg-red-50 text-red-800 border border-red-200">
+                  🧯 ביקורת בטיחות ואש
+                </span>
+              )}
+              {report.reportType === 'handover' && (
+                <span className="text-xs font-bold px-3 py-1 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200">
+                  🔑 פרוטוקול מסירה
+                </span>
+              )}
+              {report.score !== undefined && (
+                <span className={`text-xs font-bold px-3 py-1 rounded-full border ${
+                  report.score >= 85 ? 'bg-emerald-50 text-emerald-800 border-emerald-200' :
+                  report.score >= 70 ? 'bg-amber-50 text-amber-800 border-amber-200' :
+                  'bg-red-50 text-red-800 border-red-200'
+                }`}>
+                  ציון: {report.score}/100
+                </span>
+              )}
+            </div>
+
+            <p className="text-xs sm:text-sm text-slate-500">
               בניין: <Link to={`/project/${project.id}`} className="text-sky-600 hover:text-sky-700 font-bold hover:underline">{project.name}</Link>
             </p>
+
             <div className="flex items-center gap-2 text-xs text-slate-400 mt-2 flex-wrap">
               <span className="font-mono-numbers">{formatDate(report.date)}</span>
               {report.group && <span className="text-xs bg-sky-50 text-sky-800 border border-sky-100 px-2.5 py-0.5 rounded-full font-bold">{report.group}</span>}
+              {report.surveyorName && (
+                <span className="text-xs bg-slate-100 text-slate-700 px-2.5 py-0.5 rounded-full font-medium">
+                  בודק / עורך: {report.surveyorName}
+                </span>
+              )}
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -278,8 +343,57 @@ const ReportDetailPage: React.FC = () => {
             <button onClick={handleExportExcel} className="p-2 text-slate-500 hover:text-emerald-600 rounded-xl hover:bg-emerald-50 transition-colors" title="יצא Excel"><ArrowDownTrayIcon className="w-5 h-5" /></button>
           </div>
         </div>
-        {report.description && <p className="mt-4 text-xs sm:text-sm text-slate-700 whitespace-pre-wrap leading-relaxed bg-slate-50/70 p-4 rounded-2xl border border-slate-100">{report.description}</p>}
+
+        {report.description && (
+          <p className="mt-4 text-xs sm:text-sm text-slate-700 whitespace-pre-wrap leading-relaxed bg-slate-50/70 p-4 rounded-2xl border border-slate-100">
+            {report.description}
+          </p>
+        )}
+
+        {report.findings && (
+          <div className="mt-4 p-4 rounded-2xl bg-amber-50/60 border border-amber-200/80">
+            <h4 className="text-xs font-bold text-amber-900 uppercase tracking-wider mb-1">ממצאים והמלצות הסקר / ביקורת:</h4>
+            <p className="text-xs sm:text-sm text-amber-950 whitespace-pre-wrap leading-relaxed">{report.findings}</p>
+          </div>
+        )}
       </section>
+
+      {/* Attached Files & Documents Section */}
+      {report.files && report.files.length > 0 && (
+        <section className="bg-white p-6 rounded-3xl shadow-xs border border-slate-200/90">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <FolderIcon className="w-5 h-5 text-sky-600" />
+              <h3 className="text-base font-bold text-slate-900">קבצים ומסמכים מצורפים לדוח ({report.files.length})</h3>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+            {report.files.map((file, idx) => (
+              <div 
+                key={file.id || idx} 
+                className="flex items-center justify-between p-3 rounded-2xl bg-slate-50 hover:bg-slate-100/80 border border-slate-200/80 transition-colors"
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <span className="text-xl">📄</span>
+                  <div className="truncate">
+                    <p className="text-xs font-bold text-slate-800 truncate">{file.name}</p>
+                    <p className="text-[10px] text-slate-400">{file.group || 'קובץ מצורף'}</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setViewingFile(file)}
+                  className="p-1.5 text-sky-600 hover:text-sky-800 hover:bg-sky-50 rounded-lg transition-colors flex items-center gap-1 text-xs font-bold"
+                  title="צפה במסמך"
+                >
+                  <EyeIcon className="w-4 h-4" />
+                  <span>הצג</span>
+                </button>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       <ReportDashboard problems={problems} chartRef={dashboardChartRef} />
       
@@ -339,6 +453,129 @@ const ReportDetailPage: React.FC = () => {
             </div>
         </div>
       </CollapsibleSection>
+
+      {/* Edit Report Modal */}
+      <Modal isOpen={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} title="עריכת פרטי דוח / סקר" size="lg">
+        <form onSubmit={handleSaveReportEdit} className="space-y-4">
+          <div>
+            <label className="block text-xs font-bold text-slate-700 mb-1">כותרת הדוח / הסקר *</label>
+            <input
+              type="text"
+              required
+              value={currentReportData.title || ''}
+              onChange={e => setCurrentReportData(prev => ({ ...prev, title: e.target.value }))}
+              className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-sky-500"
+            />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">תאריך</label>
+              <input
+                type="date"
+                value={currentReportData.date ? currentReportData.date.split('T')[0] : ''}
+                onChange={e => setCurrentReportData(prev => ({ ...prev, date: e.target.value }))}
+                className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-sky-500"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">סוג דוח / סקר</label>
+              <select
+                value={currentReportData.reportType || 'standard'}
+                onChange={e => setCurrentReportData(prev => ({ ...prev, reportType: e.target.value as any }))}
+                className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-sky-500"
+              >
+                <option value="standard">דוח רגיל / תקלות</option>
+                <option value="survey">סקר מבנה מקיף</option>
+                <option value="inspection">ביקורת מבנה תקופתית</option>
+                <option value="fire_safety">ביקורת בטיחות ואש</option>
+                <option value="handover">פרוטוקול מסירה</option>
+                <option value="audit">ביקורת תקנים</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">שם הבודק / עורך הסקר</label>
+              <input
+                type="text"
+                placeholder="לדוגמה: אינג' יורם כהן"
+                value={currentReportData.surveyorName || ''}
+                onChange={e => setCurrentReportData(prev => ({ ...prev, surveyorName: e.target.value }))}
+                className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-sky-500"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">ציון משוקלל (0-100)</label>
+              <input
+                type="number"
+                min="0"
+                max="100"
+                placeholder="לדוגמה: 88"
+                value={currentReportData.score ?? ''}
+                onChange={e => setCurrentReportData(prev => ({ ...prev, score: e.target.value ? Number(e.target.value) : undefined }))}
+                className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-sky-500"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-slate-700 mb-1">קבוצה / קטגוריה</label>
+            <input
+              type="text"
+              placeholder="לדוגמה: סקרי הנדסה, בטיחות שנתית"
+              value={currentReportData.group || ''}
+              onChange={e => setCurrentReportData(prev => ({ ...prev, group: e.target.value }))}
+              className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-sky-500"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-slate-700 mb-1">ממצאים והמלצות הסקר</label>
+            <textarea
+              rows={3}
+              placeholder="ממצאי הסקר, ליקויים מרכזיים והמלצות לביצוע..."
+              value={currentReportData.findings || ''}
+              onChange={e => setCurrentReportData(prev => ({ ...prev, findings: e.target.value }))}
+              className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-sky-500"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-slate-700 mb-1">תיאור כללי / הערות</label>
+            <textarea
+              rows={3}
+              value={currentReportData.description || ''}
+              onChange={e => setCurrentReportData(prev => ({ ...prev, description: e.target.value }))}
+              className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-sky-500"
+            />
+          </div>
+
+          <div className="flex justify-end gap-3 pt-3 border-t border-slate-200">
+            <button
+              type="button"
+              onClick={() => setIsEditModalOpen(false)}
+              className="px-4 py-2 border border-slate-300 text-slate-700 rounded-xl text-sm font-bold hover:bg-slate-50"
+            >
+              ביטול
+            </button>
+            <button
+              type="submit"
+              className="px-5 py-2 bg-sky-600 text-white rounded-xl text-sm font-bold hover:bg-sky-700 shadow-sm"
+            >
+              שמור שינויים
+            </button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Universal File Viewer Modal for Attached Documents & PDFs */}
+      <UniversalFileViewerModal
+        isOpen={!!viewingFile}
+        onClose={() => setViewingFile(null)}
+        file={viewingFile}
+      />
     </div>
   );
 };

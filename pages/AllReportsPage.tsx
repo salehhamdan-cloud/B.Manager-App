@@ -34,12 +34,30 @@ const AllReportsPage: React.FC = () => {
     const [isLoading, setIsLoading] = useState(true);
     const [sortOrder, setSortOrder] = useState('date-desc');
     const [groupFilter, setGroupFilter] = useState('');
+    const [reportTypeFilter, setReportTypeFilter] = useState<'all' | 'survey' | 'inspection' | 'standard'>('all');
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-    const [newReport, setNewReport] = useState<{ projectId: string; title: string; date: string; group?: string; description: string; workerIds?: string[]; supplierIds?: string[]; tenantIds?: string[] }>({
+    const [newReport, setNewReport] = useState<{
+        projectId: string;
+        title: string;
+        date: string;
+        group?: string;
+        description: string;
+        reportType?: 'standard' | 'survey' | 'inspection' | 'handover' | 'fire_safety';
+        surveyorName?: string;
+        score?: number;
+        findings?: string;
+        workerIds?: string[];
+        supplierIds?: string[];
+        tenantIds?: string[];
+    }>({
         projectId: '',
         title: '',
         date: new Date().toISOString().split('T')[0],
         description: '',
+        reportType: 'standard',
+        surveyorName: '',
+        score: undefined,
+        findings: '',
         workerIds: [],
         supplierIds: [],
         tenantIds: [],
@@ -129,6 +147,10 @@ const AllReportsPage: React.FC = () => {
             date: new Date(newReport.date).toISOString(),
             group: newReport.group?.trim() || undefined,
             description: newReport.description,
+            reportType: newReport.reportType || 'standard',
+            surveyorName: newReport.surveyorName?.trim() || undefined,
+            score: newReport.score !== undefined ? Number(newReport.score) : undefined,
+            findings: newReport.findings?.trim() || undefined,
             workerIds: newReport.workerIds || [],
             supplierIds: newReport.supplierIds || [],
             tenantIds: newReport.tenantIds || [],
@@ -276,11 +298,19 @@ const AllReportsPage: React.FC = () => {
             tempReports = tempReports.filter(report => 
                 report.title.toLowerCase().includes(lowercasedTerm) ||
                 report.projectName.toLowerCase().includes(lowercasedTerm) ||
-                (report.group && report.group.toLowerCase().includes(lowercasedTerm))
+                (report.group && report.group.toLowerCase().includes(lowercasedTerm)) ||
+                (report.surveyorName && report.surveyorName.toLowerCase().includes(lowercasedTerm)) ||
+                (report.description && report.description.toLowerCase().includes(lowercasedTerm))
             );
         }
 
         const filtered = tempReports.filter(report => {
+            if (reportTypeFilter !== 'all') {
+                const isSurvey = report.reportType === 'survey' || report.title?.includes('סקר') || report.group?.includes('סקר');
+                if (reportTypeFilter === 'survey' && !isSurvey) return false;
+                if (reportTypeFilter === 'inspection' && report.reportType !== 'inspection' && !report.title?.includes('ביקורת') && !report.title?.includes('תקלה')) return false;
+                if (reportTypeFilter === 'standard' && (isSurvey || report.reportType === 'inspection')) return false;
+            }
             if (!groupFilter) return true;
             if (groupFilter === '__none__') return !report.group;
             return report.group === groupFilter;
@@ -374,6 +404,15 @@ const AllReportsPage: React.FC = () => {
 
             <div className="bg-white p-5 rounded-3xl shadow-xs border border-slate-200/90 mb-6 space-y-4">
                  <div>
+                    <label className="block text-xs font-bold text-slate-600 mb-2">סוג מסמך / סקר:</label>
+                    <div className="flex flex-wrap gap-1.5">
+                        <ControlButton label="הכל" value="all" currentValue={reportTypeFilter} onClick={setReportTypeFilter as any} />
+                        <ControlButton label="📋 סקרי מבנה ובדק בית" value="survey" currentValue={reportTypeFilter} onClick={setReportTypeFilter as any} />
+                        <ControlButton label="🔍 דוחות תקלות וביקורת" value="inspection" currentValue={reportTypeFilter} onClick={setReportTypeFilter as any} />
+                        <ControlButton label="📝 דוחות תחזוקה שוטפים" value="standard" currentValue={reportTypeFilter} onClick={setReportTypeFilter as any} />
+                    </div>
+                </div>
+                 <div>
                     <label className="block text-xs font-bold text-slate-600 mb-2">סנן לפי קבוצה:</label>
                     <div className="flex flex-wrap gap-1.5">
                         <ControlButton label="הכל" value="" currentValue={groupFilter} onClick={setGroupFilter} />
@@ -439,35 +478,67 @@ const AllReportsPage: React.FC = () => {
             )}
              <Modal isOpen={isAddModalOpen} onClose={() => setIsAddModalOpen(false)} title="הוספת דוח חדש" size="lg">
                 <form onSubmit={handleAddNewReport} className="space-y-4">
-                    <div>
-                        <label htmlFor="projectId" className="block text-sm font-medium text-slate-700">בניין</label>
-                        <select
-                            id="projectId"
-                            name="projectId"
-                            value={newReport.projectId}
-                            onChange={handleInputChange}
-                            required
-                            className="mt-1 block w-full input-class"
-                        >
-                            <option value="" disabled>בחר בניין...</option>
-                            {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                        </select>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label htmlFor="projectId" className="block text-sm font-medium text-slate-700">בניין*</label>
+                            <select
+                                id="projectId"
+                                name="projectId"
+                                value={newReport.projectId}
+                                onChange={handleInputChange}
+                                required
+                                className="mt-1 block w-full input-class"
+                            >
+                                <option value="" disabled>בחר בניין...</option>
+                                {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                            </select>
+                        </div>
+                        <div>
+                            <label htmlFor="reportType" className="block text-sm font-medium text-slate-700">סוג המסמך / סקר</label>
+                            <select
+                                id="reportType"
+                                name="reportType"
+                                value={newReport.reportType || 'standard'}
+                                onChange={handleInputChange}
+                                className="mt-1 block w-full input-class"
+                            >
+                                <option value="standard">דוח תחזוקה שוטף</option>
+                                <option value="survey">📋 סקר מבנה / בדק בית</option>
+                                <option value="inspection">🔍 ביקורת ליקויים</option>
+                                <option value="handover">🤝 פרוטוקול מסירה</option>
+                                <option value="fire_safety">🧯 ביקורת בטיחות ואש</option>
+                            </select>
+                        </div>
                     </div>
                     <div>
-                        <label htmlFor="title" className="block text-sm font-medium text-slate-700">כותרת הדוח</label>
-                        <input type="text" name="title" value={newReport.title} onChange={handleInputChange} required className="mt-1 block w-full input-class" />
+                        <label htmlFor="title" className="block text-sm font-medium text-slate-700">כותרת הדוח / הסקר*</label>
+                        <input type="text" name="title" value={newReport.title} onChange={handleInputChange} required className="mt-1 block w-full input-class" placeholder={newReport.reportType === 'survey' ? 'סקר ליקויי מבנה שנתי' : 'דוח תקלות וקריאות שירות'} />
                     </div>
-                     <div>
-                        <label htmlFor="date" className="block text-sm font-medium text-slate-700">תאריך הדוח</label>
-                        <input type="date" name="date" value={newReport.date} onChange={handleInputChange} required className="mt-1 block w-full input-class" />
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <div>
+                            <label htmlFor="date" className="block text-sm font-medium text-slate-700">תאריך*</label>
+                            <input type="date" name="date" value={newReport.date} onChange={handleInputChange} required className="mt-1 block w-full input-class" />
+                        </div>
+                        <div>
+                            <label htmlFor="surveyorName" className="block text-sm font-medium text-slate-700">שם הסוקר / בודק</label>
+                            <input type="text" name="surveyorName" value={newReport.surveyorName || ''} onChange={handleInputChange} className="mt-1 block w-full input-class" placeholder="מהנדס / מנהל אחזקה" />
+                        </div>
+                        <div>
+                            <label htmlFor="score" className="block text-sm font-medium text-slate-700">ציון מצב מבנה (1-100)</label>
+                            <input type="number" min="0" max="100" name="score" value={newReport.score ?? ''} onChange={handleInputChange} className="mt-1 block w-full input-class" placeholder="85" />
+                        </div>
                     </div>
                     <div>
                         <label htmlFor="group" className="block text-sm font-medium text-slate-700">קבוצה (אופציונלי)</label>
-                        <input type="text" name="group" value={newReport.group || ''} onChange={handleInputChange} className="mt-1 block w-full input-class" placeholder="לדוגמה: בדיקות איטום" />
+                        <input type="text" name="group" value={newReport.group || ''} onChange={handleInputChange} className="mt-1 block w-full input-class" placeholder="לדוגמה: בדיקות איטום, סקר גגות" />
                     </div>
                     <div>
-                        <label htmlFor="description" className="block text-sm font-medium text-slate-700">תיאור (אופציונלי)</label>
-                        <textarea name="description" value={newReport.description} onChange={handleInputChange} rows={3} className="mt-1 block w-full input-class" />
+                        <label htmlFor="findings" className="block text-sm font-medium text-slate-700">סיכום ממצאים עיקריים ומסקנות (לסקרי מבנה)</label>
+                        <textarea name="findings" value={newReport.findings || ''} onChange={handleInputChange} rows={2} className="mt-1 block w-full input-class" placeholder="סיכום מצב התשתיות, ליקויים קריטיים, המלצות לטיפול דחוף..." />
+                    </div>
+                    <div>
+                        <label htmlFor="description" className="block text-sm font-medium text-slate-700">תיאור והערות (אופציונלי)</label>
+                        <textarea name="description" value={newReport.description} onChange={handleInputChange} rows={2} className="mt-1 block w-full input-class" />
                     </div>
                     <div>
                         <label htmlFor="report-workers" className="block text-sm font-medium text-slate-700">עובדים משויכים</label>

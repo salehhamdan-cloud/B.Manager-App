@@ -19,19 +19,10 @@ import { formatDate } from '../utils/dateFormatter';
 import CollapsibleSection from '../components/common/CollapsibleSection';
 import RenewFileModal from '../components/common/RenewFileModal';
 import { generateId } from '../utils/idGenerator';
+import UniversalFileViewerModal from '../components/common/UniversalFileViewerModal';
 
 const FileViewerModal: React.FC<{ file: ProjectFile | null; onClose: () => void }> = ({ file, onClose }) => {
-    if (!file) return null;
-    const fileSrc = file.url || file.dataUrl;
-    return (
-        <Modal isOpen={!!file} onClose={onClose} title={`תצוגה מקדימה: ${file.name}`} size="xl">
-            <div className="w-full h-[75vh] bg-slate-200 rounded-md">
-                {fileSrc && file.mimeType.startsWith('image/') ? ( <img src={fileSrc} alt={file.name} className="w-full h-full object-contain" /> ) : 
-                 fileSrc && file.mimeType === 'application/pdf' ? ( <iframe src={fileSrc} title={file.name} className="w-full h-full border-0" /> ) : 
-                 ( <div className="flex items-center justify-center h-full text-slate-600"><p>לא ניתן להציג תצוגה מקדימה עבור קובץ מסוג זה.</p></div> )}
-            </div>
-        </Modal>
-    );
+    return <UniversalFileViewerModal isOpen={!!file} onClose={onClose} file={file} />;
 };
 
 const ProjectFilesPage: React.FC = () => {

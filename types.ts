@@ -166,6 +166,12 @@ export interface Tenant {
     contractFile?: StoredFile;
     signaturePath?: string;
     notes?: string;
+    area?: number;
+    additionalUnits?: string;
+    parkingSpacesCount?: number;
+    baseManagementFee?: number;
+    addedManagementFee?: number;
+    billingType?: 'Monthly' | 'Quarterly' | 'Annual' | string;
 }
 
 export type BuildingSystemType = 'elevator' | 'generator' | 'hvac' | 'fire_safety' | 'water_pumps' | 'electrical' | 'other';
@@ -175,6 +181,14 @@ export interface BuildingSystemLog {
     buildingId: string;
     systemType: BuildingSystemType;
     title: string;
+    name?: string;
+    model?: string;
+    amount?: number;
+    place?: string;
+    power?: string;
+    customFields?: string;
+    imagePaths?: string[] | string;
+    category?: string;
     lastInspectionDate?: string;
     nextInspectionDate?: string;
     technicianName?: string;
@@ -182,6 +196,7 @@ export interface BuildingSystemLog {
     status: 'תקין' | 'דורש בדיקה' | 'תקול' | 'מושבת';
     notes?: string;
     certificateFile?: StoredFile;
+    certificatePath?: string;
     createdAt?: string;
     updatedAt?: string;
 }
@@ -211,13 +226,20 @@ export interface Invoice {
     supplierId?: string;
     supplierName?: string;
     invoiceNumber: string;
+    title?: string;
     amount: number;
+    totalAmount?: number;
     date: string;
     dueDate?: string;
     status: 'משולם' | 'ממתין' | 'באיחור' | 'paid' | 'pending' | 'overdue';
     filePath?: string;
     pdfFile?: StoredFile;
     notes?: string;
+    currency?: string;
+    category?: string;
+    projectId?: string;
+    signaturePath?: string;
+    linkedQuotationNumber?: string;
     createdAt?: string;
     updatedAt?: string;
 }
@@ -229,6 +251,16 @@ export interface Supplier {
     email: string;
     address?: string;
     companyId: string;
+    buildingId?: string;
+    serviceType?: string;
+    contactPerson?: string;
+    notes?: string;
+    website?: string;
+    rating?: number;
+    contractFilePath?: string;
+    contractStartDate?: string;
+    contractEndDate?: string;
+    contractValue?: number;
     createdAt: string;
     updatedAt: string;
 }
@@ -259,10 +291,18 @@ export interface Worker {
     phone: string;
     email: string;
     address: string;
+    buildingId?: string;
+    role?: string;
     specialty?: string;
     hourlyRate?: number;
+    electricityIdNumber?: string;
+    currentWorkingStatus?: 'Active' | 'On Leave' | 'Terminated' | string;
+    electricityIdExpiryDate?: string;
+    safetyCourseExpiryDate?: string;
+    startWorkingDate?: string;
     insuranceExpiryDate?: string;
     notes?: string;
+    certificatePath?: string;
     photo?: StoredFile;
     safetyPermit?: PermitFile;
     workAtHeightPermit?: PermitFile;
@@ -372,6 +412,10 @@ export interface Report {
     date: string;
     description: string;
     group?: string;
+    reportType?: 'inspection' | 'survey' | 'audit' | 'handover' | 'standard' | 'fire_safety';
+    surveyorName?: string;
+    score?: number;
+    findings?: string;
     files: ProjectFile[];
     createdAt: string;
     updatedAt: string;
@@ -657,6 +701,8 @@ export interface FullAppBackup {
     documentFiles?: any[];
     filledForms?: any[];
     appSettings?: any;
+    isUniversalSync?: boolean;
+    webData?: any;
 }
 export interface CloudFile {
     id: string;
