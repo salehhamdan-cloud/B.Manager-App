@@ -1,0 +1,11 @@
+{
+  "name": "B.Manager App",
+  "description": "B.Manager is a React application for managing buildings, reports, and problems, including PDF generation and image uploads. Built with TypeScript and Tailwind CSS.",
+  "requestFramePermissions": [
+    "camera"
+  ],
+  "prompt": "",
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
