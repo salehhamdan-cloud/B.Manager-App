@@ -5,20 +5,13 @@ import * as dbService from '../../services/dbService';
 import { formatDate } from '../../utils/dateFormatter';
 import { useToast } from '../../contexts/ToastContext';
 import { 
-    PlusIcon, PencilIcon, TrashIcon, ArrowDownTrayIcon, ArrowUpTrayIcon,
-    ChevronUpIcon, ChevronDownIcon
-} from '../icons/ActionIcons';
-import {
-    CheckCircleIcon, XMarkIcon, ArrowPathIcon,
-    ExclamationTriangleIcon, InformationCircleIcon
-} from '../icons/FeedbackIcons';
-import { 
-    ClipboardDocumentListIcon, CalendarDaysIcon, WrenchScrewdriverIcon, 
-    SettingsIcon, ArchiveBoxIcon, ChevronLeftIcon 
-} from '../icons/GeneralIcons';
-import { ReceiptPercentIcon, CalculatorIcon } from '../icons/BusinessIcons';
-import { UserGroupIcon, IdentificationIcon } from '../icons/UserIcons';
-import { ChartPieIcon, RectangleGroupIcon, QueueListIcon, FolderIcon } from '../icons/NavigationIcons';
+    Plus, Pencil, Trash2, Download, Upload,
+    ChevronUp, ChevronDown, CheckCircle2, X, RotateCw,
+    AlertTriangle, Info, ClipboardList, Calendar, Wrench, 
+    Settings, Package, ChevronLeft, Receipt, Calculator,
+    Users, HardHat, PieChart, Layers, CheckSquare, Folder,
+    Clock, ShieldAlert, ArrowRight, BarChart3, SlidersHorizontal, Check, Eye
+} from 'lucide-react';
 
 export type WidgetId = 
     | 'pending_reports'
@@ -398,21 +391,21 @@ export const CustomizableWidgetSystem: React.FC<CustomizableWidgetSystemProps> =
     return (
         <section className="space-y-5">
             {/* Header Control Toolbar */}
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-slate-200/90 shadow-2xs">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-white dark:bg-neutral-900 p-4 rounded-2xl border border-neutral-200 dark:border-neutral-800 shadow-2xs">
                 <div className="flex items-center gap-2.5">
-                    <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-sky-500 to-indigo-600 text-white flex items-center justify-center shadow-xs">
-                        <ChartPieIcon className="w-5 h-5" />
+                    <div className="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-xs">
+                        <PieChart className="w-5 h-5" />
                     </div>
                     <div>
                         <div className="flex items-center gap-2">
-                            <h2 className="text-base sm:text-lg font-bold text-slate-900 tracking-tight">
+                            <h2 className="text-base sm:text-lg font-bold text-neutral-900 dark:text-neutral-100 tracking-tight">
                                 ווידג'טים וסטטיסטיקות בזמן אמת
                             </h2>
-                            <span className="text-[11px] font-bold bg-sky-100 text-sky-800 px-2 py-0.5 rounded-full font-mono-numbers">
+                            <span className="text-[11px] font-bold bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 px-2.5 py-0.5 rounded-full font-mono font-bold">
                                 {enabledWidgets.length}/{widgets.length} פעילים
                             </span>
                         </div>
-                        <p className="text-xs text-slate-500">
+                        <p className="text-xs text-neutral-500 dark:text-neutral-400">
                             מבט מהיר על דוחות פתוחים, תקלות דחופות, פעילות אחרונה ומדדים תפעוליים
                         </p>
                     </div>
@@ -426,19 +419,19 @@ export const CustomizableWidgetSystem: React.FC<CustomizableWidgetSystemProps> =
                             addToast('הנתונים רועננו בהצלחה', 'info');
                         }}
                         disabled={isLoadingData}
-                        className="btn-secondary py-1.5 px-3 text-xs flex items-center gap-1.5"
+                        className="px-3.5 py-2 text-xs font-semibold rounded-xl bg-white dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 text-neutral-700 dark:text-neutral-200 hover:bg-neutral-50 dark:hover:bg-neutral-700 transition flex items-center gap-1.5 shadow-2xs active:scale-95 disabled:opacity-50"
                         title="רענן נתונים כעת"
                     >
-                        <ArrowPathIcon className={`w-3.5 h-3.5 ${isLoadingData ? 'animate-spin text-sky-600' : ''}`} />
+                        <RotateCw className={`w-3.5 h-3.5 ${isLoadingData ? 'animate-spin text-blue-600' : ''}`} />
                         <span>רענון</span>
                     </button>
 
                     <button
                         onClick={() => setIsCustomizeModalOpen(true)}
-                        className="btn-primary py-1.5 px-3 text-xs flex items-center gap-1.5 bg-gradient-to-r from-sky-600 to-indigo-600 hover:from-sky-700 hover:to-indigo-700"
+                        className="px-3.5 py-2 text-xs font-semibold rounded-xl bg-blue-600 hover:bg-blue-700 text-white transition flex items-center gap-1.5 shadow-xs active:scale-95"
                         title="התאם אישית ווידג'טים וסדר תצוגה"
                     >
-                        <SettingsIcon className="w-4 h-4" />
+                        <SlidersHorizontal className="w-3.5 h-3.5" />
                         <span>התאם לוח בקרה</span>
                     </button>
                 </div>
@@ -452,25 +445,25 @@ export const CustomizableWidgetSystem: React.FC<CustomizableWidgetSystemProps> =
                         const widget = document.getElementById('widget-pending_reports');
                         if (widget) widget.scrollIntoView({ behavior: 'smooth' });
                     }}
-                    className="cursor-pointer bg-white p-4 rounded-2xl border border-slate-200/90 shadow-2xs hover:shadow-md hover:border-sky-300 transition-all group"
+                    className="cursor-pointer bg-white dark:bg-neutral-900 p-4 rounded-2xl border border-neutral-200 dark:border-neutral-800 shadow-2xs hover:shadow-md hover:border-blue-500 transition-all group"
                 >
                     <div className="flex items-center justify-between mb-2">
-                        <span className="text-xs font-semibold text-slate-500">דוחות ממתינים לטיפול</span>
-                        <div className="p-2 rounded-xl bg-amber-50 text-amber-600 group-hover:scale-105 transition-transform">
-                            <ClipboardDocumentListIcon className="w-5 h-5" />
+                        <span className="text-xs font-semibold text-neutral-500 dark:text-neutral-400">דוחות ממתינים לטיפול</span>
+                        <div className="p-2 rounded-xl bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 group-hover:scale-105 transition-transform">
+                            <ClipboardList className="w-5 h-5" />
                         </div>
                     </div>
                     <div className="flex items-baseline gap-2">
-                        <span className="text-2xl sm:text-3xl font-black text-slate-900 font-mono-numbers">
+                        <span className="text-2xl sm:text-3xl font-black text-neutral-900 dark:text-neutral-100 font-mono font-bold">
                             {pendingReportsData.totalPending}
                         </span>
-                        <span className="text-xs text-slate-500 font-medium">
+                        <span className="text-xs text-neutral-500 dark:text-neutral-400 font-medium">
                             מתוך {pendingReportsData.totalReports} דוחות
                         </span>
                     </div>
-                    <div className="mt-2 flex items-center gap-1 text-[11px] font-semibold text-amber-700">
+                    <div className="mt-2 flex items-center gap-1 text-[11px] font-semibold text-amber-600 dark:text-amber-400">
                         <span>{pendingReportsData.totalPending > 0 ? 'דורש מעקב וטיפול' : 'הכל מעודכן'}</span>
-                        <ChevronLeftIcon className="w-3.5 h-3.5 rtl:rotate-0" />
+                        <ChevronLeft className="w-3.5 h-3.5 rtl:rotate-0" />
                     </div>
                 </div>
 
@@ -482,29 +475,29 @@ export const CustomizableWidgetSystem: React.FC<CustomizableWidgetSystemProps> =
                     }}
                     className={`cursor-pointer p-4 rounded-2xl border transition-all shadow-2xs hover:shadow-md group ${
                         urgentItems.totalCount > 0 
-                            ? 'bg-gradient-to-bl from-red-50/70 to-white border-red-200 hover:border-red-300' 
-                            : 'bg-white border-slate-200/90 hover:border-sky-300'
+                            ? 'bg-rose-50/40 dark:bg-rose-950/20 border-rose-200 dark:border-rose-900/60 hover:border-rose-400' 
+                            : 'bg-white dark:bg-neutral-900 border-neutral-200 dark:border-neutral-800 hover:border-blue-500'
                     }`}
                 >
                     <div className="flex items-center justify-between mb-2">
-                        <span className="text-xs font-semibold text-slate-500">משימות ותקלות דחופות</span>
+                        <span className="text-xs font-semibold text-neutral-500 dark:text-neutral-400">משימות ותקלות דחופות</span>
                         <div className={`p-2 rounded-xl group-hover:scale-105 transition-transform ${
-                            urgentItems.totalCount > 0 ? 'bg-red-500 text-white' : 'bg-slate-100 text-slate-600'
+                            urgentItems.totalCount > 0 ? 'bg-rose-600 text-white' : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300'
                         }`}>
-                            <ExclamationTriangleIcon className="w-5 h-5" />
+                            <AlertTriangle className="w-5 h-5" />
                         </div>
                     </div>
                     <div className="flex items-baseline gap-2">
-                        <span className={`text-2xl sm:text-3xl font-black font-mono-numbers ${urgentItems.totalCount > 0 ? 'text-red-700' : 'text-slate-900'}`}>
+                        <span className={`text-2xl sm:text-3xl font-black font-mono font-bold ${urgentItems.totalCount > 0 ? 'text-rose-600 dark:text-rose-400' : 'text-neutral-900 dark:text-neutral-100'}`}>
                             {urgentItems.totalCount}
                         </span>
-                        <span className="text-xs text-slate-500 font-medium">
+                        <span className="text-xs text-neutral-500 dark:text-neutral-400 font-medium">
                             {urgentItems.criticalCount} קריטיות • {urgentItems.overdueCount} באיחור
                         </span>
                     </div>
-                    <div className="mt-2 flex items-center gap-1 text-[11px] font-semibold text-red-700">
+                    <div className="mt-2 flex items-center gap-1 text-[11px] font-semibold text-rose-600 dark:text-rose-400">
                         <span>{urgentItems.totalCount > 0 ? 'דורש טיפול עדיפות ראשונה' : 'אין תקלות דחופות'}</span>
-                        <ChevronLeftIcon className="w-3.5 h-3.5 rtl:rotate-0" />
+                        <ChevronLeft className="w-3.5 h-3.5 rtl:rotate-0" />
                     </div>
                 </div>
 
@@ -514,50 +507,50 @@ export const CustomizableWidgetSystem: React.FC<CustomizableWidgetSystemProps> =
                         const widget = document.getElementById('widget-recent_activity');
                         if (widget) widget.scrollIntoView({ behavior: 'smooth' });
                     }}
-                    className="cursor-pointer bg-white p-4 rounded-2xl border border-slate-200/90 shadow-2xs hover:shadow-md hover:border-sky-300 transition-all group"
+                    className="cursor-pointer bg-white dark:bg-neutral-900 p-4 rounded-2xl border border-neutral-200 dark:border-neutral-800 shadow-2xs hover:shadow-md hover:border-blue-500 transition-all group"
                 >
                     <div className="flex items-center justify-between mb-2">
-                        <span className="text-xs font-semibold text-slate-500">פעילות עדכנית במערכת</span>
-                        <div className="p-2 rounded-xl bg-sky-50 text-sky-600 group-hover:scale-105 transition-transform">
-                            <QueueListIcon className="w-5 h-5" />
+                        <span className="text-xs font-semibold text-neutral-500 dark:text-neutral-400">פעילות עדכנית במערכת</span>
+                        <div className="p-2 rounded-xl bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 group-hover:scale-105 transition-transform">
+                            <Clock className="w-5 h-5" />
                         </div>
                     </div>
                     <div className="flex items-baseline gap-2">
-                        <span className="text-2xl sm:text-3xl font-black text-slate-900 font-mono-numbers">
+                        <span className="text-2xl sm:text-3xl font-black text-neutral-900 dark:text-neutral-100 font-mono font-bold">
                             {allNotifications.filter(n => !n.isRead).length || allNotifications.length}
                         </span>
-                        <span className="text-xs text-slate-500 font-medium">
+                        <span className="text-xs text-neutral-500 dark:text-neutral-400 font-medium">
                             {allNotifications.filter(n => !n.isRead).length > 0 ? 'אירועים חדשים' : 'סה״כ אירועים'}
                         </span>
                     </div>
-                    <div className="mt-2 flex items-center gap-1 text-[11px] font-semibold text-sky-700">
+                    <div className="mt-2 flex items-center gap-1 text-[11px] font-semibold text-blue-600 dark:text-blue-400">
                         <span>צפייה ביומן המלא</span>
-                        <ChevronLeftIcon className="w-3.5 h-3.5 rtl:rotate-0" />
+                        <ChevronLeft className="w-3.5 h-3.5 rtl:rotate-0" />
                     </div>
                 </div>
 
                 {/* 4. Portfolio Assets Stat */}
                 <div 
                     onClick={() => navigate('/projects')}
-                    className="cursor-pointer bg-white p-4 rounded-2xl border border-slate-200/90 shadow-2xs hover:shadow-md hover:border-sky-300 transition-all group"
+                    className="cursor-pointer bg-white dark:bg-neutral-900 p-4 rounded-2xl border border-neutral-200 dark:border-neutral-800 shadow-2xs hover:shadow-md hover:border-blue-500 transition-all group"
                 >
                     <div className="flex items-center justify-between mb-2">
-                        <span className="text-xs font-semibold text-slate-500">נכסים ובניינים מנוהלים</span>
-                        <div className="p-2 rounded-xl bg-indigo-50 text-indigo-600 group-hover:scale-105 transition-transform">
-                            <RectangleGroupIcon className="w-5 h-5" />
+                        <span className="text-xs font-semibold text-neutral-500 dark:text-neutral-400">נכסים ובניינים מנוהלים</span>
+                        <div className="p-2 rounded-xl bg-purple-50 dark:bg-purple-950/60 text-purple-600 dark:text-purple-400 group-hover:scale-105 transition-transform">
+                            <Layers className="w-5 h-5" />
                         </div>
                     </div>
                     <div className="flex items-baseline gap-2">
-                        <span className="text-2xl sm:text-3xl font-black text-slate-900 font-mono-numbers">
+                        <span className="text-2xl sm:text-3xl font-black text-neutral-900 dark:text-neutral-100 font-mono font-bold">
                             {projects.length}
                         </span>
-                        <span className="text-xs text-slate-500 font-medium">
+                        <span className="text-xs text-neutral-500 dark:text-neutral-400 font-medium">
                             {stats.activeProjects} פעילים
                         </span>
                     </div>
-                    <div className="mt-2 flex items-center gap-1 text-[11px] font-semibold text-indigo-700">
+                    <div className="mt-2 flex items-center gap-1 text-[11px] font-semibold text-purple-600 dark:text-purple-400">
                         <span>ספר נכסים מלא</span>
-                        <ChevronLeftIcon className="w-3.5 h-3.5 rtl:rotate-0" />
+                        <ChevronLeft className="w-3.5 h-3.5 rtl:rotate-0" />
                     </div>
                 </div>
             </div>
@@ -573,25 +566,25 @@ export const CustomizableWidgetSystem: React.FC<CustomizableWidgetSystemProps> =
                             <div
                                 key={widget.id}
                                 id={`widget-${widget.id}`}
-                                className={`bg-white rounded-2xl p-5 border border-slate-200/90 shadow-xs flex flex-col justify-between ${colClass}`}
+                                className={`bg-white dark:bg-neutral-900 rounded-2xl p-5 border border-neutral-200 dark:border-neutral-800 shadow-2xs flex flex-col justify-between hover:border-neutral-300 dark:hover:border-neutral-700 transition ${colClass}`}
                             >
                                 <div>
-                                    <div className="flex items-center justify-between pb-3 mb-3 border-b border-slate-100 flex-wrap gap-2">
+                                    <div className="flex items-center justify-between pb-3 mb-3 border-b border-neutral-100 dark:border-neutral-800 flex-wrap gap-2">
                                         <div className="flex items-center gap-2.5">
-                                            <div className="p-2 rounded-xl bg-amber-50 text-amber-700">
-                                                <ClipboardDocumentListIcon className="w-5 h-5" />
+                                            <div className="p-2 rounded-xl bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-400">
+                                                <ClipboardList className="w-5 h-5" />
                                             </div>
                                             <div>
-                                                <h3 className="font-bold text-base text-slate-900">
+                                                <h3 className="font-bold text-base text-neutral-900 dark:text-neutral-100">
                                                     דוחות ממתינים לטיפול ({pendingReportsData.totalPending})
                                                 </h3>
-                                                <p className="text-xs text-slate-500">דוחות עם תקלות פתוחות או לא פתורות</p>
+                                                <p className="text-xs text-neutral-500 dark:text-neutral-400">דוחות עם תקלות פתוחות או לא פתורות</p>
                                             </div>
                                         </div>
                                         <div className="flex items-center gap-1.5">
                                             <Link
                                                 to="/all-reports"
-                                                className="text-xs font-semibold text-sky-700 hover:text-sky-800 bg-sky-50 hover:bg-sky-100 px-2.5 py-1 rounded-lg transition"
+                                                className="text-xs font-semibold text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/60 px-2.5 py-1 rounded-lg transition"
                                             >
                                                 כל הדוחות
                                             </Link>
@@ -603,59 +596,59 @@ export const CustomizableWidgetSystem: React.FC<CustomizableWidgetSystemProps> =
                                             {pendingReportsData.list.slice(0, 5).map(({ report, projectName, openProblemsCount, totalProblemsCount }) => (
                                                 <div
                                                     key={report.id}
-                                                    className="p-3 rounded-xl bg-slate-50 hover:bg-sky-50/60 border border-slate-200/70 hover:border-sky-200 transition-all flex items-center justify-between gap-3 group"
+                                                    className="p-3 rounded-xl bg-neutral-50 dark:bg-neutral-800/40 hover:bg-blue-50/50 dark:hover:bg-blue-950/30 border border-neutral-200/70 dark:border-neutral-800/80 hover:border-blue-300 dark:hover:border-blue-800 transition-all flex items-center justify-between gap-3 group"
                                                 >
                                                     <div className="min-w-0">
                                                         <div className="flex items-center gap-2">
                                                             <Link
                                                                 to={`/project/${report.projectId}/report/${report.id}/problems`}
-                                                                className="font-bold text-sm text-slate-800 group-hover:text-sky-800 truncate hover:underline"
+                                                                className="font-bold text-sm text-neutral-900 dark:text-neutral-100 group-hover:text-blue-600 dark:group-hover:text-blue-400 truncate hover:underline"
                                                                 title={report.title}
                                                             >
                                                                 {report.title}
                                                             </Link>
                                                             {report.group && (
-                                                                <span className="text-[10px] bg-slate-200/80 text-slate-700 px-1.5 py-0.5 rounded font-medium">
+                                                                <span className="text-[10px] bg-neutral-200 dark:bg-neutral-700 text-neutral-700 dark:text-neutral-300 px-1.5 py-0.5 rounded font-medium">
                                                                     {report.group}
                                                                 </span>
                                                             )}
                                                         </div>
-                                                        <div className="flex items-center gap-2 text-xs text-slate-500 mt-1">
-                                                            <span className="font-semibold text-slate-600">{projectName}</span>
+                                                        <div className="flex items-center gap-2 text-xs text-neutral-500 dark:text-neutral-400 mt-1">
+                                                            <span className="font-semibold text-neutral-700 dark:text-neutral-300">{projectName}</span>
                                                             <span>&bull;</span>
-                                                            <span className="font-mono-numbers">{formatDate(report.date)}</span>
+                                                            <span className="font-mono font-bold">{formatDate(report.date)}</span>
                                                         </div>
                                                     </div>
 
                                                     <div className="flex items-center gap-2 flex-shrink-0">
-                                                        <span className={`text-xs font-bold px-2 py-0.5 rounded-full font-mono-numbers ${
-                                                            openProblemsCount > 0 ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'
+                                                        <span className={`text-xs font-bold px-2 py-0.5 rounded-full font-mono ${
+                                                            openProblemsCount > 0 ? 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-400' : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400'
                                                         }`}>
                                                             {openProblemsCount} תקלות פתוחות
                                                         </span>
                                                         <Link
                                                             to={`/project/${report.projectId}/report/${report.id}/problems`}
-                                                            className="p-1 text-slate-400 group-hover:text-sky-600 rounded-lg hover:bg-white"
+                                                            className="p-1 text-neutral-400 dark:text-neutral-500 group-hover:text-blue-600 dark:group-hover:text-blue-400 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 transition"
                                                             title="צפה בתקלות הדוח"
                                                         >
-                                                            <ChevronLeftIcon className="w-4 h-4 rtl:rotate-0" />
+                                                            <ChevronLeft className="w-4 h-4 rtl:rotate-0" />
                                                         </Link>
                                                     </div>
                                                 </div>
                                             ))}
                                         </div>
                                     ) : (
-                                        <div className="text-center py-8 bg-slate-50 rounded-xl border border-dashed border-slate-200">
-                                            <CheckCircleIcon className="w-8 h-8 text-emerald-500 mx-auto mb-2" />
-                                            <p className="text-sm font-bold text-slate-800">כל הדוחות טופלו בהצלחה!</p>
-                                            <p className="text-xs text-slate-500 mt-0.5">אין כרגע דוחות עם תקלות פתוחות במערכת.</p>
+                                        <div className="text-center py-8 bg-neutral-50 dark:bg-neutral-800/40 rounded-xl border border-dashed border-neutral-200 dark:border-neutral-800">
+                                            <CheckCircle2 className="w-8 h-8 text-emerald-500 mx-auto mb-2" />
+                                            <p className="text-sm font-bold text-neutral-900 dark:text-neutral-100">כל הדוחות טופלו בהצלחה!</p>
+                                            <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">אין כרגע דוחות עם תקלות פתוחות במערכת.</p>
                                         </div>
                                     )}
                                 </div>
 
-                                <div className="mt-4 pt-3 border-t border-slate-100 flex justify-between items-center text-xs text-slate-500">
+                                <div className="mt-4 pt-3 border-t border-neutral-100 dark:border-neutral-800 flex justify-between items-center text-xs text-neutral-500 dark:text-neutral-400">
                                     <span>סה״כ {pendingReportsData.totalReports} דוחות מתועדים</span>
-                                    <Link to="/all-reports" className="font-semibold text-sky-700 hover:underline">
+                                    <Link to="/all-reports" className="font-semibold text-blue-600 dark:text-blue-400 hover:underline">
                                         סריקת כל הדוחות &larr;
                                     </Link>
                                 </div>
@@ -669,39 +662,39 @@ export const CustomizableWidgetSystem: React.FC<CustomizableWidgetSystemProps> =
                             <div
                                 key={widget.id}
                                 id={`widget-${widget.id}`}
-                                className={`bg-white rounded-2xl p-5 border border-slate-200/90 shadow-xs flex flex-col justify-between ${colClass}`}
+                                className={`bg-white dark:bg-neutral-900 rounded-2xl p-5 border border-neutral-200 dark:border-neutral-800 shadow-2xs flex flex-col justify-between hover:border-neutral-300 dark:hover:border-neutral-700 transition ${colClass}`}
                             >
                                 <div>
-                                    <div className="flex items-center justify-between pb-3 mb-3 border-b border-slate-100 flex-wrap gap-2">
+                                    <div className="flex items-center justify-between pb-3 mb-3 border-b border-neutral-100 dark:border-neutral-800 flex-wrap gap-2">
                                         <div className="flex items-center gap-2.5">
-                                            <div className="p-2 rounded-xl bg-red-50 text-red-700">
-                                                <ExclamationTriangleIcon className="w-5 h-5" />
+                                            <div className="p-2 rounded-xl bg-red-50 dark:bg-red-950/60 text-red-700 dark:text-red-400">
+                                                <AlertTriangle className="w-5 h-5" />
                                             </div>
                                             <div>
-                                                <h3 className="font-bold text-base text-slate-900">
+                                                <h3 className="font-bold text-base text-neutral-900 dark:text-neutral-100">
                                                     משימות ותקלות דחופות ({urgentItems.totalCount})
                                                 </h3>
-                                                <p className="text-xs text-slate-500">דורש טיפול עדיפות ראשונה</p>
+                                                <p className="text-xs text-neutral-500 dark:text-neutral-400">דורש טיפול עדיפות ראשונה</p>
                                             </div>
                                         </div>
 
                                         {/* Filter Tabs */}
-                                        <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-lg text-xs font-semibold">
+                                        <div className="flex items-center gap-1 bg-neutral-100 dark:bg-neutral-800 p-0.5 rounded-lg text-xs font-semibold">
                                             <button
                                                 onClick={() => setUrgentFilter('all')}
-                                                className={`px-2 py-1 rounded-md transition ${urgentFilter === 'all' ? 'bg-white shadow-2xs text-slate-900' : 'text-slate-600 hover:text-slate-900'}`}
+                                                className={`px-2 py-1 rounded-md transition ${urgentFilter === 'all' ? 'bg-white dark:bg-neutral-900 shadow-2xs text-neutral-900 dark:text-neutral-100' : 'text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100'}`}
                                             >
                                                 הכל ({urgentItems.totalCount})
                                             </button>
                                             <button
                                                 onClick={() => setUrgentFilter('critical_problems')}
-                                                className={`px-2 py-1 rounded-md transition ${urgentFilter === 'critical_problems' ? 'bg-white shadow-2xs text-red-700 font-bold' : 'text-slate-600 hover:text-slate-900'}`}
+                                                className={`px-2 py-1 rounded-md transition ${urgentFilter === 'critical_problems' ? 'bg-white dark:bg-neutral-900 shadow-2xs text-red-600 dark:text-red-400 font-bold' : 'text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100'}`}
                                             >
                                                 תקלות ({urgentItems.criticalCount})
                                             </button>
                                             <button
                                                 onClick={() => setUrgentFilter('overdue_tasks')}
-                                                className={`px-2 py-1 rounded-md transition ${urgentFilter === 'overdue_tasks' ? 'bg-white shadow-2xs text-amber-700 font-bold' : 'text-slate-600 hover:text-slate-900'}`}
+                                                className={`px-2 py-1 rounded-md transition ${urgentFilter === 'overdue_tasks' ? 'bg-white dark:bg-neutral-900 shadow-2xs text-amber-600 dark:text-amber-400 font-bold' : 'text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100'}`}
                                             >
                                                 באיחור ({urgentItems.overdueCount})
                                             </button>
@@ -713,7 +706,7 @@ export const CustomizableWidgetSystem: React.FC<CustomizableWidgetSystemProps> =
                                             {urgentItems.items.map((item) => (
                                                 <div
                                                     key={`${item.type}-${item.id}`}
-                                                    className="p-3 rounded-xl bg-white hover:bg-slate-50 border border-slate-200/90 shadow-2xs transition-all flex items-start justify-between gap-3 group"
+                                                    className="p-3 rounded-xl bg-neutral-50 dark:bg-neutral-800/40 hover:bg-neutral-100 dark:hover:bg-neutral-800 border border-neutral-200/70 dark:border-neutral-800/80 shadow-2xs transition-all flex items-start justify-between gap-3 group"
                                                 >
                                                     <div className="min-w-0 flex-grow">
                                                         <div className="flex items-center gap-2 flex-wrap">
@@ -722,14 +715,14 @@ export const CustomizableWidgetSystem: React.FC<CustomizableWidgetSystemProps> =
                                                             </span>
                                                             <Link
                                                                 to={item.link}
-                                                                className="font-bold text-sm text-slate-900 hover:text-sky-700 truncate"
+                                                                className="font-bold text-sm text-neutral-900 dark:text-neutral-100 hover:text-blue-600 dark:hover:text-blue-400 truncate"
                                                                 title={item.title}
                                                             >
                                                                 {item.title}
                                                             </Link>
                                                         </div>
-                                                        <div className="flex items-center gap-2 text-xs text-slate-500 mt-1.5 flex-wrap">
-                                                            <span className="font-semibold text-slate-700">{item.subtitle}</span>
+                                                        <div className="flex items-center gap-2 text-xs text-neutral-500 dark:text-neutral-400 mt-1.5 flex-wrap">
+                                                            <span className="font-semibold text-neutral-700 dark:text-neutral-300">{item.subtitle}</span>
                                                             {item.location && (
                                                                 <>
                                                                     <span>&bull;</span>
@@ -739,7 +732,7 @@ export const CustomizableWidgetSystem: React.FC<CustomizableWidgetSystemProps> =
                                                             {item.date && (
                                                                 <>
                                                                     <span>&bull;</span>
-                                                                    <span className="font-mono-numbers">{formatDate(item.date)}</span>
+                                                                    <span className="font-mono font-bold">{formatDate(item.date)}</span>
                                                                 </>
                                                             )}
                                                         </div>
@@ -749,7 +742,7 @@ export const CustomizableWidgetSystem: React.FC<CustomizableWidgetSystemProps> =
                                                         {item.isProblem && item.problemData && (
                                                             <button
                                                                 onClick={() => handleToggleProblemFixed(item.problemData!)}
-                                                                className="text-xs font-semibold px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 rounded-lg transition"
+                                                                className="text-xs font-semibold px-2.5 py-1 bg-emerald-50 dark:bg-emerald-950/60 hover:bg-emerald-100 dark:hover:bg-emerald-900 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 rounded-lg transition"
                                                                 title="סמן כנפתרה"
                                                             >
                                                                 פתור
@@ -757,29 +750,29 @@ export const CustomizableWidgetSystem: React.FC<CustomizableWidgetSystemProps> =
                                                         )}
                                                         <Link
                                                             to={item.link}
-                                                            className="p-1.5 text-slate-400 group-hover:text-sky-600 rounded-lg hover:bg-slate-100"
+                                                            className="p-1.5 text-neutral-400 dark:text-neutral-500 group-hover:text-blue-600 dark:group-hover:text-blue-400 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 transition"
                                                             title="ערוך פריט"
                                                         >
-                                                            <PencilIcon className="w-4 h-4" />
+                                                            <Pencil className="w-4 h-4" />
                                                         </Link>
                                                     </div>
                                                 </div>
                                             ))}
                                         </div>
                                     ) : (
-                                        <div className="text-center py-8 bg-slate-50 rounded-xl border border-dashed border-slate-200">
-                                            <CheckCircleIcon className="w-8 h-8 text-emerald-500 mx-auto mb-2" />
-                                            <p className="text-sm font-bold text-slate-800">אין תקלות או משימות דחופות!</p>
-                                            <p className="text-xs text-slate-500 mt-0.5">כל התקלות הקריטיות והמשימות בסטטוס תקין.</p>
+                                        <div className="text-center py-8 bg-neutral-50 dark:bg-neutral-800/40 rounded-xl border border-dashed border-neutral-200 dark:border-neutral-800">
+                                            <CheckCircle2 className="w-8 h-8 text-emerald-500 mx-auto mb-2" />
+                                            <p className="text-sm font-bold text-neutral-900 dark:text-neutral-100">אין תקלות או משימות דחופות!</p>
+                                            <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">כל התקלות הקריטיות והמשימות בסטטוס תקין.</p>
                                         </div>
                                     )}
                                 </div>
 
-                                <div className="mt-4 pt-3 border-t border-slate-100 flex justify-between items-center text-xs text-slate-500">
-                                    <Link to="/all-problems-checklist" className="font-semibold text-sky-700 hover:underline">
+                                <div className="mt-4 pt-3 border-t border-neutral-100 dark:border-neutral-800 flex justify-between items-center text-xs text-neutral-500 dark:text-neutral-400">
+                                    <Link to="/all-problems-checklist" className="font-semibold text-blue-600 dark:text-blue-400 hover:underline">
                                         צפה בצ׳ק ליסט תקלות מלא &larr;
                                     </Link>
-                                    <Link to="/all-todos" className="font-semibold text-slate-600 hover:underline">
+                                    <Link to="/all-todos" className="font-semibold text-neutral-600 dark:text-neutral-400 hover:underline">
                                         כל המשימות &larr;
                                     </Link>
                                 </div>
@@ -793,32 +786,32 @@ export const CustomizableWidgetSystem: React.FC<CustomizableWidgetSystemProps> =
                             <div
                                 key={widget.id}
                                 id={`widget-${widget.id}`}
-                                className={`bg-white rounded-2xl p-5 border border-slate-200/90 shadow-xs flex flex-col justify-between ${colClass}`}
+                                className={`bg-white dark:bg-neutral-900 rounded-2xl p-5 border border-neutral-200 dark:border-neutral-800 shadow-2xs flex flex-col justify-between hover:border-neutral-300 dark:hover:border-neutral-700 transition ${colClass}`}
                             >
                                 <div>
-                                    <div className="flex items-center justify-between pb-3 mb-3 border-b border-slate-100 flex-wrap gap-2">
+                                    <div className="flex items-center justify-between pb-3 mb-3 border-b border-neutral-100 dark:border-neutral-800 flex-wrap gap-2">
                                         <div className="flex items-center gap-2.5">
-                                            <div className="p-2 rounded-xl bg-indigo-50 text-indigo-700">
-                                                <QueueListIcon className="w-5 h-5" />
+                                            <div className="p-2 rounded-xl bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400">
+                                                <Layers className="w-5 h-5" />
                                             </div>
                                             <div>
-                                                <h3 className="font-bold text-base text-slate-900">
+                                                <h3 className="font-bold text-base text-neutral-900 dark:text-neutral-100">
                                                     יומן פעילות אחרונה במערכת
                                                 </h3>
-                                                <p className="text-xs text-slate-500">אירועים, שינויים ועדכונים בזמן אמת</p>
+                                                <p className="text-xs text-neutral-500 dark:text-neutral-400">אירועים, שינויים ועדכונים בזמן אמת</p>
                                             </div>
                                         </div>
 
                                         <div className="flex items-center gap-2">
                                             <button
                                                 onClick={handleMarkAllRead}
-                                                className="text-xs font-semibold text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 px-2.5 py-1 rounded-lg transition"
+                                                className="text-xs font-semibold text-neutral-600 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 px-2.5 py-1 rounded-lg transition"
                                             >
                                                 סמן הכל כנקרא
                                             </button>
                                             <Link
                                                 to="/notifications"
-                                                className="text-xs font-semibold text-sky-700 hover:text-sky-800 bg-sky-50 hover:bg-sky-100 px-2.5 py-1 rounded-lg transition"
+                                                className="text-xs font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-700 bg-blue-50 dark:bg-blue-950/60 hover:bg-blue-100 px-2.5 py-1 rounded-lg transition"
                                             >
                                                 צפה בכל הפעילויות
                                             </Link>
@@ -832,22 +825,22 @@ export const CustomizableWidgetSystem: React.FC<CustomizableWidgetSystemProps> =
                                                     key={act.id}
                                                     className={`p-3 rounded-xl border transition-all flex items-center justify-between gap-3 ${
                                                         act.isRead 
-                                                            ? 'bg-slate-50/60 border-slate-100 text-slate-700' 
-                                                            : 'bg-sky-50/50 border-sky-200/80 text-slate-900'
+                                                            ? 'bg-neutral-50 dark:bg-neutral-800/40 border-neutral-200/60 dark:border-neutral-800/80 text-neutral-700 dark:text-neutral-300' 
+                                                            : 'bg-blue-50/50 dark:bg-blue-950/30 border-blue-200/80 dark:border-blue-900/50 text-neutral-900 dark:text-neutral-100'
                                                     }`}
                                                 >
                                                     <div className="flex items-center gap-3 min-w-0">
                                                         <div className={`w-2 h-2 rounded-full flex-shrink-0 ${
                                                             act.action === 'create' ? 'bg-emerald-500' :
                                                             act.action === 'complete' ? 'bg-indigo-500' :
-                                                            act.action === 'delete' ? 'bg-red-500' : 'bg-sky-500'
+                                                            act.action === 'delete' ? 'bg-red-500' : 'bg-blue-500'
                                                         }`} />
                                                         <div className="min-w-0">
                                                             <p className="font-semibold text-sm truncate">
                                                                 {act.message}
                                                             </p>
-                                                            <div className="flex items-center gap-2 text-xs text-slate-400 mt-0.5">
-                                                                <span className="font-medium text-slate-500">
+                                                            <div className="flex items-center gap-2 text-xs text-neutral-400 mt-0.5">
+                                                                <span className="font-medium text-neutral-500 dark:text-neutral-400">
                                                                     {act.itemType === 'problem' ? 'תקלה' :
                                                                      act.itemType === 'report' ? 'דוח' :
                                                                      act.itemType === 'building' ? 'בניין' :
@@ -856,13 +849,13 @@ export const CustomizableWidgetSystem: React.FC<CustomizableWidgetSystemProps> =
                                                                      act.itemType === 'quotation' ? 'הצעת מחיר' : 'פעילות'}
                                                                 </span>
                                                                 <span>&bull;</span>
-                                                                <span className="font-mono-numbers">{formatRelativeTime(act.createdAt)}</span>
+                                                                <span className="font-mono font-bold">{formatRelativeTime(act.createdAt)}</span>
                                                             </div>
                                                         </div>
                                                     </div>
 
                                                     <div className="flex items-center gap-2 flex-shrink-0 text-xs">
-                                                        <span className="text-[11px] font-mono-numbers text-slate-400">
+                                                        <span className="text-[11px] font-mono text-neutral-400 dark:text-neutral-500">
                                                             {formatDate(act.createdAt)}
                                                         </span>
                                                     </div>
@@ -870,17 +863,17 @@ export const CustomizableWidgetSystem: React.FC<CustomizableWidgetSystemProps> =
                                             ))}
                                         </div>
                                     ) : (
-                                        <div className="text-center py-8 bg-slate-50 rounded-xl border border-dashed border-slate-200">
-                                            <InformationCircleIcon className="w-8 h-8 text-slate-400 mx-auto mb-2" />
-                                            <p className="text-sm font-bold text-slate-800">אין פעילויות עדכניות</p>
-                                            <p className="text-xs text-slate-500 mt-0.5">פעולות שתבצע במערכת יופיעו כאן באופן אוטומטי.</p>
+                                        <div className="text-center py-8 bg-neutral-50 dark:bg-neutral-800/40 rounded-xl border border-dashed border-neutral-200 dark:border-neutral-800">
+                                            <Info className="w-8 h-8 text-neutral-400 dark:text-neutral-500 mx-auto mb-2" />
+                                            <p className="text-sm font-bold text-neutral-900 dark:text-neutral-100">אין פעילויות עדכניות</p>
+                                            <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">פעולות שתבצע במערכת יופיעו כאן באופן אוטומטי.</p>
                                         </div>
                                     )}
                                 </div>
 
-                                <div className="mt-4 pt-3 border-t border-slate-100 flex justify-between items-center text-xs text-slate-500">
+                                <div className="mt-4 pt-3 border-t border-neutral-100 dark:border-neutral-800 flex justify-between items-center text-xs text-neutral-500 dark:text-neutral-400">
                                     <span>מתעד אוטומטית שינויים בנכסים, דיירים, תקלות וחשבוניות</span>
-                                    <Link to="/notifications" className="font-semibold text-sky-700 hover:underline">
+                                    <Link to="/notifications" className="font-semibold text-blue-600 dark:text-blue-400 hover:underline">
                                         פתח יומן מלא &larr;
                                     </Link>
                                 </div>
@@ -894,17 +887,17 @@ export const CustomizableWidgetSystem: React.FC<CustomizableWidgetSystemProps> =
                             <div
                                 key={widget.id}
                                 id={`widget-${widget.id}`}
-                                className={`bg-white rounded-2xl p-5 border border-slate-200/90 shadow-xs flex flex-col justify-between ${colClass}`}
+                                className={`bg-white dark:bg-neutral-900 rounded-2xl p-5 border border-neutral-200 dark:border-neutral-800 shadow-2xs flex flex-col justify-between hover:border-neutral-300 dark:hover:border-neutral-700 transition ${colClass}`}
                             >
                                 <div>
-                                    <div className="flex items-center justify-between pb-3 mb-3 border-b border-slate-100">
+                                    <div className="flex items-center justify-between pb-3 mb-3 border-b border-neutral-100 dark:border-neutral-800">
                                         <div className="flex items-center gap-2.5">
-                                            <div className="p-2 rounded-xl bg-amber-50 text-amber-700">
-                                                <ExclamationTriangleIcon className="w-5 h-5" />
+                                            <div className="p-2 rounded-xl bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-400">
+                                                <AlertTriangle className="w-5 h-5" />
                                             </div>
                                             <div>
-                                                <h3 className="font-bold text-base text-slate-900">התראות ותקינה</h3>
-                                                <p className="text-xs text-slate-500">תוקף חוזים, מעליות ובטיחות</p>
+                                                <h3 className="font-bold text-base text-neutral-900 dark:text-neutral-100">התראות ותקינה</h3>
+                                                <p className="text-xs text-neutral-500 dark:text-neutral-400">תוקף חוזים, מעליות ובטיחות</p>
                                             </div>
                                         </div>
                                     </div>
@@ -912,61 +905,61 @@ export const CustomizableWidgetSystem: React.FC<CustomizableWidgetSystemProps> =
                                     <div className="grid grid-cols-2 gap-2.5">
                                         <Link
                                             to="/all-tenants"
-                                            className="p-3 rounded-xl bg-slate-50 hover:bg-amber-50/80 border border-slate-200/80 transition flex flex-col justify-between"
+                                            className="p-3 rounded-xl bg-neutral-50 dark:bg-neutral-800/40 hover:bg-amber-50/80 dark:hover:bg-amber-950/40 border border-neutral-200/80 dark:border-neutral-800/80 transition flex flex-col justify-between"
                                         >
-                                            <span className="text-xs font-semibold text-slate-600">חוזים קרובים לסיום</span>
+                                            <span className="text-xs font-semibold text-neutral-600 dark:text-neutral-300">חוזים קרובים לסיום</span>
                                             <div className="flex items-baseline gap-1 mt-2">
-                                                <span className="text-2xl font-black text-amber-700 font-mono-numbers">
+                                                <span className="text-2xl font-black text-amber-700 dark:text-amber-400 font-mono font-bold">
                                                     {stats.expiringLeasesCount || 0}
                                                 </span>
-                                                <span className="text-[10px] text-slate-400">&lt; 30 יום</span>
+                                                <span className="text-[10px] text-neutral-400">&lt; 30 יום</span>
                                             </div>
                                         </Link>
 
                                         <Link
                                             to="/all-tenants"
-                                            className="p-3 rounded-xl bg-slate-50 hover:bg-red-50/80 border border-slate-200/80 transition flex flex-col justify-between"
+                                            className="p-3 rounded-xl bg-neutral-50 dark:bg-neutral-800/40 hover:bg-red-50/80 dark:hover:bg-red-950/40 border border-neutral-200/80 dark:border-neutral-800/80 transition flex flex-col justify-between"
                                         >
-                                            <span className="text-xs font-semibold text-slate-600">חוזים שפגו</span>
+                                            <span className="text-xs font-semibold text-neutral-600 dark:text-neutral-300">חוזים שפגו</span>
                                             <div className="flex items-baseline gap-1 mt-2">
-                                                <span className="text-2xl font-black text-red-700 font-mono-numbers">
+                                                <span className="text-2xl font-black text-red-700 dark:text-red-400 font-mono font-bold">
                                                     {stats.expiredLeasesCount || 0}
                                                 </span>
-                                                <span className="text-[10px] text-slate-400">לחידוש</span>
+                                                <span className="text-[10px] text-neutral-400">לחידוש</span>
                                             </div>
                                         </Link>
 
                                         <Link
                                             to="/calendar"
-                                            className="p-3 rounded-xl bg-slate-50 hover:bg-amber-50/80 border border-slate-200/80 transition flex flex-col justify-between"
+                                            className="p-3 rounded-xl bg-neutral-50 dark:bg-neutral-800/40 hover:bg-amber-50/80 dark:hover:bg-amber-950/40 border border-neutral-200/80 dark:border-neutral-800/80 transition flex flex-col justify-between"
                                         >
-                                            <span className="text-xs font-semibold text-slate-600">ביקורות מעליות ותקינה</span>
+                                            <span className="text-xs font-semibold text-neutral-600 dark:text-neutral-300">ביקורות מעליות ותקינה</span>
                                             <div className="flex items-baseline gap-1 mt-2">
-                                                <span className="text-2xl font-black text-amber-700 font-mono-numbers">
+                                                <span className="text-2xl font-black text-amber-700 dark:text-amber-400 font-mono font-bold">
                                                     {stats.dueBuildingSystemsCount || 0}
                                                 </span>
-                                                <span className="text-[10px] text-slate-400">תשתיות</span>
+                                                <span className="text-[10px] text-neutral-400">תשתיות</span>
                                             </div>
                                         </Link>
 
                                         <Link
                                             to="/all-inventory"
-                                            className="p-3 rounded-xl bg-slate-50 hover:bg-orange-50/80 border border-slate-200/80 transition flex flex-col justify-between"
+                                            className="p-3 rounded-xl bg-neutral-50 dark:bg-neutral-800/40 hover:bg-orange-50/80 dark:hover:bg-orange-950/40 border border-neutral-200/80 dark:border-neutral-800/80 transition flex flex-col justify-between"
                                         >
-                                            <span className="text-xs font-semibold text-slate-600">מלאי חלפים נמוך</span>
+                                            <span className="text-xs font-semibold text-neutral-600 dark:text-neutral-300">מלאי חלפים נמוך</span>
                                             <div className="flex items-baseline gap-1 mt-2">
-                                                <span className="text-2xl font-black text-orange-700 font-mono-numbers">
+                                                <span className="text-2xl font-black text-orange-700 dark:text-orange-400 font-mono font-bold">
                                                     {stats.lowInventoryCount || 0}
                                                 </span>
-                                                <span className="text-[10px] text-slate-400">להזמנה</span>
+                                                <span className="text-[10px] text-neutral-400">להזמנה</span>
                                             </div>
                                         </Link>
                                     </div>
                                 </div>
 
-                                <div className="mt-4 pt-3 border-t border-slate-100 text-xs text-slate-500 flex justify-between">
+                                <div className="mt-4 pt-3 border-t border-neutral-100 dark:border-neutral-800 text-xs text-neutral-500 dark:text-neutral-400 flex justify-between">
                                     <span>סריקה מתוזמנת אוטומטית</span>
-                                    <Link to="/calendar" className="font-semibold text-sky-700 hover:underline">
+                                    <Link to="/calendar" className="font-semibold text-blue-600 dark:text-blue-400 hover:underline">
                                         לוח ביקורות מקיף &larr;
                                     </Link>
                                 </div>
@@ -980,59 +973,59 @@ export const CustomizableWidgetSystem: React.FC<CustomizableWidgetSystemProps> =
                             <div
                                 key={widget.id}
                                 id={`widget-${widget.id}`}
-                                className={`bg-white rounded-2xl p-5 border border-slate-200/90 shadow-xs flex flex-col justify-between ${colClass}`}
+                                className={`bg-white dark:bg-neutral-900 rounded-2xl p-5 border border-neutral-200 dark:border-neutral-800 shadow-2xs flex flex-col justify-between hover:border-neutral-300 dark:hover:border-neutral-700 transition ${colClass}`}
                             >
                                 <div>
-                                    <div className="flex items-center justify-between pb-3 mb-3 border-b border-slate-100">
+                                    <div className="flex items-center justify-between pb-3 mb-3 border-b border-neutral-100 dark:border-neutral-800">
                                         <div className="flex items-center gap-2.5">
-                                            <div className="p-2 rounded-xl bg-emerald-50 text-emerald-700">
-                                                <ReceiptPercentIcon className="w-5 h-5" />
+                                            <div className="p-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400">
+                                                <Receipt className="w-5 h-5" />
                                             </div>
                                             <div>
-                                                <h3 className="font-bold text-base text-slate-900">מבט פיננסי והוצאות</h3>
-                                                <p className="text-xs text-slate-500">חשבוניות ספקים ויתרות תשלום</p>
+                                                <h3 className="font-bold text-base text-neutral-900 dark:text-neutral-100">מבט פיננסי והוצאות</h3>
+                                                <p className="text-xs text-neutral-500 dark:text-neutral-400">חשבוניות ספקים ויתרות תשלום</p>
                                             </div>
                                         </div>
                                         <Link
                                             to="/quotations"
-                                            className="text-xs font-semibold text-sky-700 hover:text-sky-800 bg-sky-50 px-2 py-1 rounded-lg"
+                                            className="text-xs font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-700 bg-blue-50 dark:bg-blue-950/60 px-2 py-1 rounded-lg"
                                         >
                                             הצעות מחיר
                                         </Link>
                                     </div>
 
                                     <div className="space-y-3">
-                                        <div className="p-3 rounded-xl bg-slate-50 flex items-center justify-between">
+                                        <div className="p-3 rounded-xl bg-neutral-50 dark:bg-neutral-800/40 flex items-center justify-between border border-neutral-200/60 dark:border-neutral-800/60">
                                             <div>
-                                                <span className="text-xs text-slate-500 block">הוצאות אחזקה מצטברות</span>
-                                                <span className="text-xl font-black text-slate-900 font-mono-numbers">
+                                                <span className="text-xs text-neutral-500 dark:text-neutral-400 block">הוצאות אחזקה מצטברות</span>
+                                                <span className="text-xl font-black text-neutral-900 dark:text-neutral-100 font-mono font-bold">
                                                     {currency}{(stats.totalExpenses || 0).toLocaleString()}
                                                 </span>
                                             </div>
-                                            <span className="text-xs font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">
+                                            <span className="text-xs font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-950 px-2 py-0.5 rounded-full font-mono">
                                                 שולם/בביצוע
                                             </span>
                                         </div>
 
-                                        <div className="p-3 rounded-xl bg-amber-50/70 border border-amber-200/60 flex items-center justify-between">
+                                        <div className="p-3 rounded-xl bg-amber-50/70 dark:bg-amber-950/40 border border-amber-200/60 dark:border-amber-800/60 flex items-center justify-between">
                                             <div>
-                                                <span className="text-xs text-amber-800 block">יתרת תשלום פתוחה לספקים</span>
-                                                <span className="text-xl font-black text-amber-900 font-mono-numbers">
+                                                <span className="text-xs text-amber-800 dark:text-amber-300 block">יתרת תשלום פתוחה לספקים</span>
+                                                <span className="text-xl font-black text-amber-900 dark:text-amber-200 font-mono font-bold">
                                                     {currency}{(stats.unpaidExpenses || 0).toLocaleString()}
                                                 </span>
                                             </div>
-                                            <span className="text-xs font-bold text-amber-800 bg-amber-200/80 px-2 py-0.5 rounded-full">
+                                            <span className="text-xs font-bold text-amber-800 dark:text-amber-300 bg-amber-200/80 dark:bg-amber-900/80 px-2 py-0.5 rounded-full font-mono">
                                                 {stats.overdueInvoicesCount || 0} באיחור
                                             </span>
                                         </div>
                                     </div>
                                 </div>
 
-                                <div className="mt-4 pt-3 border-t border-slate-100 flex justify-between items-center text-xs text-slate-500">
-                                    <Link to="/calculator" className="font-semibold text-sky-700 hover:underline flex items-center gap-1">
-                                        <CalculatorIcon className="w-3.5 h-3.5" /> מחשבון עלויות
+                                <div className="mt-4 pt-3 border-t border-neutral-100 dark:border-neutral-800 flex justify-between items-center text-xs text-neutral-500 dark:text-neutral-400">
+                                    <Link to="/calculator" className="font-semibold text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1">
+                                        <Calculator className="w-3.5 h-3.5" /> מחשבון עלויות
                                     </Link>
-                                    <Link to="/suppliers" className="font-semibold text-slate-600 hover:underline">
+                                    <Link to="/suppliers" className="font-semibold text-neutral-600 dark:text-neutral-400 hover:underline">
                                         ספר ספקים &larr;
                                     </Link>
                                 </div>
@@ -1046,22 +1039,22 @@ export const CustomizableWidgetSystem: React.FC<CustomizableWidgetSystemProps> =
                             <div
                                 key={widget.id}
                                 id={`widget-${widget.id}`}
-                                className={`bg-white rounded-2xl p-5 border border-slate-200/90 shadow-xs flex flex-col justify-between ${colClass}`}
+                                className={`bg-white dark:bg-neutral-900 rounded-2xl p-5 border border-neutral-200 dark:border-neutral-800 shadow-2xs flex flex-col justify-between hover:border-neutral-300 dark:hover:border-neutral-700 transition ${colClass}`}
                             >
                                 <div>
-                                    <div className="flex items-center justify-between pb-3 mb-3 border-b border-slate-100">
+                                    <div className="flex items-center justify-between pb-3 mb-3 border-b border-neutral-100 dark:border-neutral-800">
                                         <div className="flex items-center gap-2.5">
-                                            <div className="p-2 rounded-xl bg-emerald-50 text-emerald-700">
-                                                <CalendarDaysIcon className="w-5 h-5" />
+                                            <div className="p-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400">
+                                                <Calendar className="w-5 h-5" />
                                             </div>
                                             <div>
-                                                <h3 className="font-bold text-base text-slate-900">תחזוקה מונעת תקופתית</h3>
-                                                <p className="text-xs text-slate-500">אירועים מתוכננים בלוח השנה</p>
+                                                <h3 className="font-bold text-base text-neutral-900 dark:text-neutral-100">תחזוקה מונעת תקופתית</h3>
+                                                <p className="text-xs text-neutral-500 dark:text-neutral-400">אירועים מתוכננים בלוח השנה</p>
                                             </div>
                                         </div>
                                         <Link
                                             to="/calendar"
-                                            className="text-xs font-semibold text-sky-700 hover:text-sky-800 bg-sky-50 px-2 py-1 rounded-lg"
+                                            className="text-xs font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-700 bg-blue-50 dark:bg-blue-950/60 px-2 py-1 rounded-lg"
                                         >
                                             פתח לוח שנה
                                         </Link>
@@ -1072,31 +1065,31 @@ export const CustomizableWidgetSystem: React.FC<CustomizableWidgetSystemProps> =
                                             {stats.upcomingTasks.slice(0, 4).map(task => (
                                                 <div
                                                     key={`${task.type}-${task.id}`}
-                                                    className="p-2.5 rounded-xl bg-slate-50 hover:bg-slate-100/80 transition flex items-center justify-between gap-3 text-xs"
+                                                    className="p-2.5 rounded-xl bg-neutral-50 dark:bg-neutral-800/40 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition flex items-center justify-between gap-3 text-xs"
                                                 >
                                                     <div className="flex items-center gap-2 min-w-0">
                                                         <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 flex-shrink-0" />
                                                         <div className="min-w-0">
-                                                            <p className="font-bold text-slate-800 truncate">{task.name}</p>
-                                                            <p className="text-slate-500 truncate">{task.projectName}</p>
+                                                            <p className="font-bold text-neutral-900 dark:text-neutral-100 truncate">{task.name}</p>
+                                                            <p className="text-neutral-500 dark:text-neutral-400 truncate">{task.projectName}</p>
                                                         </div>
                                                     </div>
-                                                    <span className="font-bold text-slate-700 font-mono-numbers flex-shrink-0">
+                                                    <span className="font-mono font-bold text-neutral-700 dark:text-neutral-300 flex-shrink-0">
                                                         {formatDate(task.dueDate)}
                                                     </span>
                                                 </div>
                                             ))}
                                         </div>
                                     ) : (
-                                        <div className="text-center py-6 bg-slate-50 rounded-xl text-slate-500 text-xs">
+                                        <div className="text-center py-6 bg-neutral-50 dark:bg-neutral-800/40 rounded-xl text-neutral-500 dark:text-neutral-400 text-xs">
                                             אין אירועי תחזוקה מונעת קרובים ב-30 הימים הקרובים.
                                         </div>
                                     )}
                                 </div>
 
-                                <div className="mt-4 pt-3 border-t border-slate-100 flex justify-between items-center text-xs text-slate-500">
+                                <div className="mt-4 pt-3 border-t border-neutral-100 dark:border-neutral-800 flex justify-between items-center text-xs text-neutral-500 dark:text-neutral-400">
                                     <span>סנכרון מלא עם לוח השנה העברי והלועזי</span>
-                                    <Link to="/calendar" className="font-semibold text-sky-700 hover:underline">
+                                    <Link to="/calendar" className="font-semibold text-blue-600 dark:text-blue-400 hover:underline">
                                         מעבר ללוח מלא &larr;
                                     </Link>
                                 </div>
@@ -1110,39 +1103,39 @@ export const CustomizableWidgetSystem: React.FC<CustomizableWidgetSystemProps> =
                             <div
                                 key={widget.id}
                                 id={`widget-${widget.id}`}
-                                className={`bg-white rounded-2xl p-5 border border-slate-200/90 shadow-xs ${colClass}`}
+                                className={`bg-white dark:bg-neutral-900 rounded-2xl p-5 border border-neutral-200 dark:border-neutral-800 shadow-2xs hover:border-neutral-300 dark:hover:border-neutral-700 transition ${colClass}`}
                             >
-                                <div className="flex items-center justify-between pb-3 mb-4 border-b border-slate-100">
+                                <div className="flex items-center justify-between pb-3 mb-4 border-b border-neutral-100 dark:border-neutral-800">
                                     <div className="flex items-center gap-2.5">
-                                        <div className="p-2 rounded-xl bg-sky-50 text-sky-700">
-                                            <ChartPieIcon className="w-5 h-5" />
+                                        <div className="p-2 rounded-xl bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400">
+                                            <PieChart className="w-5 h-5" />
                                         </div>
                                         <div>
-                                            <h3 className="font-bold text-base text-slate-900">גרפי סטטוס והתפלגות תיק הנכסים</h3>
-                                            <p className="text-xs text-slate-500">סטטוס תפעולי וריכוז תקלות קריטיות לפי בניין</p>
+                                            <h3 className="font-bold text-base text-neutral-900 dark:text-neutral-100">גרפי סטטוס והתפלגות תיק הנכסים</h3>
+                                            <p className="text-xs text-neutral-500 dark:text-neutral-400">סטטוס תפעולי וריכוז תקלות קריטיות לפי בניין</p>
                                         </div>
                                     </div>
                                 </div>
 
                                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                                     <div>
-                                        <h4 className="text-xs font-bold text-slate-600 mb-2 text-center">בניינים לפי סטטוס תפעולי</h4>
+                                        <h4 className="text-xs font-bold text-neutral-700 dark:text-neutral-300 mb-2 text-center">בניינים לפי סטטוס תפעולי</h4>
                                         <div className="relative h-56">
                                             {projects.length > 0 ? (
                                                 <canvas ref={statusChartRef}></canvas>
                                             ) : (
-                                                <p className="text-center text-slate-400 pt-20 text-xs">אין נתוני בניינים להצגה.</p>
+                                                <p className="text-center text-neutral-400 pt-20 text-xs">אין נתוני בניינים להצגה.</p>
                                             )}
                                         </div>
                                     </div>
 
                                     <div>
-                                        <h4 className="text-xs font-bold text-slate-600 mb-2 text-center">בניינים עם הכי הרבה תקלות קריטיות</h4>
+                                        <h4 className="text-xs font-bold text-neutral-700 dark:text-neutral-300 mb-2 text-center">בניינים עם הכי הרבה תקלות קריטיות</h4>
                                         <div className="relative h-56">
                                             {issuesChartRef ? (
                                                 <canvas ref={issuesChartRef}></canvas>
                                             ) : (
-                                                <p className="text-center text-slate-400 pt-20 text-xs">אין תקלות קריטיות פתוחות.</p>
+                                                <p className="text-center text-neutral-400 pt-20 text-xs">אין תקלות קריטיות פתוחות.</p>
                                             )}
                                         </div>
                                     </div>
@@ -1157,50 +1150,50 @@ export const CustomizableWidgetSystem: React.FC<CustomizableWidgetSystemProps> =
 
             {/* Customize Dashboard Modal */}
             {isCustomizeModalOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fadeIn">
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fade-in">
                     <div 
-                        className="bg-white rounded-3xl shadow-2xl max-w-2xl w-full max-h-[90vh] flex flex-col overflow-hidden border border-slate-200"
+                        className="bg-white dark:bg-neutral-900 rounded-3xl shadow-2xl max-w-2xl w-full max-h-[90vh] flex flex-col overflow-hidden border border-neutral-200 dark:border-neutral-800"
                         style={{ direction: 'rtl' }}
                     >
                         {/* Modal Header */}
-                        <div className="p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/70">
+                        <div className="p-5 border-b border-neutral-100 dark:border-neutral-800 flex items-center justify-between bg-neutral-50 dark:bg-neutral-800/50">
                             <div className="flex items-center gap-3">
-                                <div className="p-2 rounded-xl bg-sky-600 text-white shadow-xs">
-                                    <SettingsIcon className="w-5 h-5" />
+                                <div className="p-2 rounded-xl bg-blue-600 text-white shadow-xs">
+                                    <Settings className="w-5 h-5" />
                                 </div>
                                 <div>
-                                    <h3 className="text-lg font-bold text-slate-900">התאמת לוח הבקרה והווידג'טים</h3>
-                                    <p className="text-xs text-slate-500">קבע אילו ווידג'טים יוצגו בלוח הבקרה, את סדר הופעתם ואת רוחב התצוגה שלהם</p>
+                                    <h3 className="text-lg font-bold text-neutral-900 dark:text-neutral-100">התאמת לוח הבקרה והווידג'טים</h3>
+                                    <p className="text-xs text-neutral-500 dark:text-neutral-400">קבע אילו ווידג'טים יוצגו בלוח הבקרה, את סדר הופעתם ואת רוחב התצוגה שלהם</p>
                                 </div>
                             </div>
                             <button
                                 onClick={() => setIsCustomizeModalOpen(false)}
-                                className="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 transition"
+                                className="p-2 rounded-xl text-neutral-400 hover:text-neutral-700 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800 transition"
                             >
-                                <XMarkIcon className="w-5 h-5" />
+                                <X className="w-5 h-5" />
                             </button>
                         </div>
 
                         {/* Modal Body */}
-                        <div className="p-5 overflow-y-auto space-y-3 divide-y divide-slate-100">
+                        <div className="p-5 overflow-y-auto space-y-3 divide-y divide-neutral-100 dark:divide-neutral-800">
                             {widgets.map((w, index) => (
                                 <div
                                     key={w.id}
                                     className={`pt-3 first:pt-0 flex items-center justify-between gap-4 p-3 rounded-2xl transition ${
-                                        w.enabled ? 'bg-sky-50/40 border border-sky-100' : 'bg-slate-50/60 opacity-60'
+                                        w.enabled ? 'bg-blue-50/40 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-900/50' : 'bg-neutral-50 dark:bg-neutral-800/40 opacity-60'
                                     }`}
                                 >
                                     <div className="flex items-center gap-3 min-w-0">
                                         <button
                                             onClick={() => toggleWidget(w.id)}
-                                            className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                                                w.enabled ? 'bg-sky-600' : 'bg-slate-300'
+                                            className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden ${
+                                                w.enabled ? 'bg-blue-600' : 'bg-neutral-300 dark:bg-neutral-700'
                                             }`}
                                             role="switch"
                                             aria-checked={w.enabled}
                                         >
                                             <span
-                                                className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                                                className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-xs ring-0 transition duration-200 ease-in-out ${
                                                     w.enabled ? '-translate-x-5' : 'translate-x-0'
                                                 }`}
                                             />
@@ -1208,12 +1201,12 @@ export const CustomizableWidgetSystem: React.FC<CustomizableWidgetSystemProps> =
 
                                         <div className="min-w-0">
                                             <div className="flex items-center gap-2">
-                                                <span className="font-bold text-sm text-slate-900">{w.title}</span>
-                                                <span className="text-[10px] font-semibold bg-slate-200 text-slate-700 px-1.5 py-0.5 rounded">
+                                                <span className="font-bold text-sm text-neutral-900 dark:text-neutral-100">{w.title}</span>
+                                                <span className="text-[10px] font-semibold bg-neutral-200 dark:bg-neutral-700 text-neutral-700 dark:text-neutral-300 px-1.5 py-0.5 rounded">
                                                     {w.category}
                                                 </span>
                                             </div>
-                                            <p className="text-xs text-slate-500 mt-0.5 line-clamp-1">
+                                            <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5 line-clamp-1">
                                                 {w.description}
                                             </p>
                                         </div>
@@ -1225,8 +1218,8 @@ export const CustomizableWidgetSystem: React.FC<CustomizableWidgetSystemProps> =
                                             onClick={() => toggleColSpan(w.id)}
                                             className={`px-2 py-1 rounded-lg text-xs font-semibold border transition ${
                                                 w.colSpan === 2 
-                                                    ? 'bg-indigo-50 border-indigo-200 text-indigo-800' 
-                                                    : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-100'
+                                                    ? 'bg-blue-100 dark:bg-blue-950/70 border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300' 
+                                                    : 'bg-white dark:bg-neutral-800 border-neutral-200 dark:border-neutral-700 text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-700'
                                             }`}
                                             title="שנה רוחב תצוגה (רוחב כפול / עמודה יחידה)"
                                         >
@@ -1238,18 +1231,18 @@ export const CustomizableWidgetSystem: React.FC<CustomizableWidgetSystemProps> =
                                             <button
                                                 onClick={() => moveWidget(index, 'up')}
                                                 disabled={index === 0}
-                                                className="p-1.5 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-white disabled:opacity-20 transition"
+                                                className="p-1.5 text-neutral-400 hover:text-neutral-700 dark:hover:text-white rounded-lg hover:bg-white dark:hover:bg-neutral-800 disabled:opacity-20 transition"
                                                 title="הזז מעלה"
                                             >
-                                                <ChevronUpIcon className="w-4 h-4" />
+                                                <ChevronUp className="w-4 h-4" />
                                             </button>
                                             <button
                                                 onClick={() => moveWidget(index, 'down')}
                                                 disabled={index === widgets.length - 1}
-                                                className="p-1.5 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-white disabled:opacity-20 transition"
+                                                className="p-1.5 text-neutral-400 hover:text-neutral-700 dark:hover:text-white rounded-lg hover:bg-white dark:hover:bg-neutral-800 disabled:opacity-20 transition"
                                                 title="הזז מטה"
                                             >
-                                                <ChevronDownIcon className="w-4 h-4" />
+                                                <ChevronDown className="w-4 h-4" />
                                             </button>
                                         </div>
                                     </div>
@@ -1258,17 +1251,17 @@ export const CustomizableWidgetSystem: React.FC<CustomizableWidgetSystemProps> =
                         </div>
 
                         {/* Modal Footer */}
-                        <div className="p-4 border-t border-slate-100 bg-slate-50/70 flex items-center justify-between">
+                        <div className="p-4 border-t border-neutral-100 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-800/50 flex items-center justify-between">
                             <div className="flex items-center gap-2">
                                 <button
                                     onClick={resetToDefaults}
-                                    className="text-xs font-semibold text-slate-600 hover:text-slate-900 bg-white border border-slate-200 px-3 py-1.5 rounded-xl hover:bg-slate-100 transition shadow-2xs"
+                                    className="text-xs font-semibold text-neutral-700 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 px-3 py-1.5 rounded-xl hover:bg-neutral-100 dark:hover:bg-neutral-700 transition shadow-2xs"
                                 >
                                     איפוס לברירת מחדל
                                 </button>
                                 <button
                                     onClick={enableAllWidgets}
-                                    className="text-xs font-semibold text-sky-700 hover:text-sky-800 bg-sky-50 border border-sky-200 px-3 py-1.5 rounded-xl hover:bg-sky-100 transition shadow-2xs"
+                                    className="text-xs font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-700 bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-900/60 px-3 py-1.5 rounded-xl hover:bg-blue-100 transition shadow-2xs"
                                 >
                                     הפעל את כל הווידג'טים
                                 </button>
@@ -1276,7 +1269,7 @@ export const CustomizableWidgetSystem: React.FC<CustomizableWidgetSystemProps> =
 
                             <button
                                 onClick={() => setIsCustomizeModalOpen(false)}
-                                className="btn-primary py-1.5 px-4 text-xs font-bold"
+                                className="flex items-center justify-center px-4 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 active:scale-95 rounded-xl shadow-xs transition"
                             >
                                 שמור וסגור
                             </button>

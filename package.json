@@ -12,17 +12,22 @@
   },
   "dependencies": {
     "@google/genai": "^0.14.0",
+    "bidi-js": "^1.1.0",
     "chart.js": "^4.4.3",
     "jspdf": "^2.5.1",
     "jspdf-autotable": "^3.8.2",
     "jszip": "^3.10.2",
+    "lucide-react": "^1.54.0",
+    "mammoth": "^1.13.0",
     "pdfjs-dist": "4.5.136",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
     "react-router-dom": "^6.25.1",
-    "sql.js": "^1.14.2"
+    "sql.js": "^1.14.2",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
+    "@tailwindcss/vite": "^4.3.3",
     "@types/node": "^26.6.3",
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",
@@ -33,6 +38,7 @@
     "eslint": "^8.57.0",
     "eslint-plugin-react-hooks": "^4.6.0",
     "eslint-plugin-react-refresh": "^0.4.6",
+    "tailwindcss": "^4.3.3",
     "typescript": "^5.2.2",
     "vite": "^5.2.0",
     "vite-plugin-pwa": "^0.20.0"

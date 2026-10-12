@@ -92,6 +92,8 @@ export const UniversalFileViewerModal: React.FC<UniversalFileViewerModalProps> =
     const [numPages, setNumPages] = useState<number>(0);
     const [currentPage, setCurrentPage] = useState<number>(1);
     const [scale, setScale] = useState<number>(1.2);
+    const [imageZoom, setImageZoom] = useState<number>(1);
+    const [imageRotation, setImageRotation] = useState<number>(0);
     const [isLoadingPdf, setIsLoadingPdf] = useState<boolean>(false);
     const [blobUrl, setBlobUrl] = useState<string>('');
     const [viewMode, setViewMode] = useState<'native' | 'canvas'>('native');
@@ -111,8 +113,12 @@ export const UniversalFileViewerModal: React.FC<UniversalFileViewerModalProps> =
     useEffect(() => {
         if (!fileSrc) {
             setBlobUrl('');
+            setImageZoom(1);
+            setImageRotation(0);
             return;
         }
+        setImageZoom(1);
+        setImageRotation(0);
         const effectiveMime = isPdf ? 'application/pdf' : (rawMime || 'application/octet-stream');
         const bUrl = getBlobUrl(fileSrc, effectiveMime);
         setBlobUrl(bUrl);
@@ -278,17 +284,17 @@ export const UniversalFileViewerModal: React.FC<UniversalFileViewerModalProps> =
         >
             <div className="flex flex-col h-[78vh] -mt-2">
                 {/* Top Control Bar */}
-                <div className="flex items-center justify-between p-3 bg-slate-100 border-b border-slate-200 rounded-t-lg gap-2 flex-wrap">
+                <div className="flex items-center justify-between p-3 bg-neutral-100 dark:bg-neutral-800/80 border-b border-neutral-200 dark:border-neutral-700 rounded-t-xl gap-2 flex-wrap">
                     {/* View mode toggle for PDF */}
                     {isPdf && (
-                        <div className="flex items-center bg-white rounded-lg p-0.5 border border-slate-200 text-xs shadow-2xs">
+                        <div className="flex items-center bg-white dark:bg-neutral-900 rounded-xl p-0.5 border border-neutral-200 dark:border-neutral-700 text-xs shadow-2xs">
                             <button
                                 type="button"
                                 onClick={() => setViewMode('native')}
-                                className={`px-2.5 py-1 rounded-md font-medium transition ${
+                                className={`px-2.5 py-1 rounded-lg font-medium transition ${
                                     viewMode === 'native'
-                                        ? 'bg-sky-600 text-white shadow-2xs'
-                                        : 'text-slate-600 hover:text-slate-900'
+                                        ? 'bg-blue-600 text-white shadow-2xs'
+                                        : 'text-neutral-600 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white'
                                 }`}
                             >
                                 מציג מובנה (חלק)
@@ -296,10 +302,10 @@ export const UniversalFileViewerModal: React.FC<UniversalFileViewerModalProps> =
                             <button
                                 type="button"
                                 onClick={() => setViewMode('canvas')}
-                                className={`px-2.5 py-1 rounded-md font-medium transition ${
+                                className={`px-2.5 py-1 rounded-lg font-medium transition ${
                                     viewMode === 'canvas'
-                                        ? 'bg-sky-600 text-white shadow-2xs'
-                                        : 'text-slate-600 hover:text-slate-900'
+                                        ? 'bg-blue-600 text-white shadow-2xs'
+                                        : 'text-neutral-600 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white'
                                 }`}
                             >
                                 מציג עמודים {numPages > 0 ? `(${numPages})` : ''}
@@ -309,12 +315,12 @@ export const UniversalFileViewerModal: React.FC<UniversalFileViewerModalProps> =
 
                     {/* Page navigation for PDF in Canvas Mode */}
                     {isPdf && viewMode === 'canvas' && numPages > 0 && (
-                        <div className="flex items-center gap-1.5 text-xs sm:text-sm font-medium text-slate-700">
+                        <div className="flex items-center gap-1.5 text-xs sm:text-sm font-medium text-neutral-700 dark:text-neutral-300">
                             <button
                                 type="button"
                                 onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                                 disabled={currentPage <= 1}
-                                className="px-2.5 py-1 bg-white border border-slate-300 rounded-md hover:bg-slate-50 disabled:opacity-40 shadow-2xs"
+                                className="px-2.5 py-1 bg-white dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-lg hover:bg-neutral-50 dark:hover:bg-neutral-700 disabled:opacity-40 shadow-2xs"
                             >
                                 הקודם
                             </button>
@@ -325,7 +331,7 @@ export const UniversalFileViewerModal: React.FC<UniversalFileViewerModalProps> =
                                 type="button"
                                 onClick={() => setCurrentPage(p => Math.min(numPages, p + 1))}
                                 disabled={currentPage >= numPages}
-                                className="px-2.5 py-1 bg-white border border-slate-300 rounded-md hover:bg-slate-50 disabled:opacity-40 shadow-2xs"
+                                className="px-2.5 py-1 bg-white dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-lg hover:bg-neutral-50 dark:hover:bg-neutral-700 disabled:opacity-40 shadow-2xs"
                             >
                                 הבא
                             </button>
@@ -338,16 +344,16 @@ export const UniversalFileViewerModal: React.FC<UniversalFileViewerModalProps> =
                             <button
                                 type="button"
                                 onClick={() => setScale(s => Math.max(0.6, s - 0.2))}
-                                className="px-2 py-1 bg-white border border-slate-300 rounded hover:bg-slate-50"
+                                className="px-2 py-1 bg-white dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-lg hover:bg-neutral-50"
                                 title="הקטן"
                             >
                                 -
                             </button>
-                            <span className="px-1 text-slate-600 font-mono">{Math.round(scale * 100)}%</span>
+                            <span className="px-1 text-neutral-600 dark:text-neutral-300 font-mono">{Math.round(scale * 100)}%</span>
                             <button
                                 type="button"
                                 onClick={() => setScale(s => Math.min(2.5, s + 0.2))}
-                                className="px-2 py-1 bg-white border border-slate-300 rounded hover:bg-slate-50"
+                                className="px-2 py-1 bg-white dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-lg hover:bg-neutral-50"
                                 title="הגדל"
                             >
                                 +
@@ -355,10 +361,55 @@ export const UniversalFileViewerModal: React.FC<UniversalFileViewerModalProps> =
                             <button
                                 type="button"
                                 onClick={() => setScale(1.2)}
-                                className="px-2 py-1 bg-white border border-slate-300 rounded hover:bg-slate-50 text-[11px]"
+                                className="px-2 py-1 bg-white dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-lg hover:bg-neutral-50 text-[11px]"
                             >
                                 איפוס
                             </button>
+                        </div>
+                    )}
+
+                    {/* Image Controls: Zoom & 90-degree Rotation */}
+                    {isImage && (
+                        <div className="flex items-center gap-1.5 text-xs">
+                            <button
+                                type="button"
+                                onClick={() => setImageZoom(z => Math.max(0.5, z - 0.25))}
+                                disabled={imageZoom <= 0.5}
+                                className="px-2.5 py-1 bg-white dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-lg hover:bg-neutral-50 dark:hover:bg-neutral-700 font-bold disabled:opacity-40"
+                                title="הקטן (-25%)"
+                            >
+                                −
+                            </button>
+                            <span className="px-1 font-mono font-bold text-neutral-700 dark:text-neutral-300 text-xs">
+                                {Math.round(imageZoom * 100)}%
+                            </span>
+                            <button
+                                type="button"
+                                onClick={() => setImageZoom(z => Math.min(3.5, z + 0.25))}
+                                disabled={imageZoom >= 3.5}
+                                className="px-2.5 py-1 bg-white dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-lg hover:bg-neutral-50 dark:hover:bg-neutral-700 font-bold disabled:opacity-40"
+                                title="הגדל (+25%)"
+                            >
+                                +
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setImageRotation(r => (r + 90) % 360)}
+                                className="inline-flex items-center gap-1 px-2.5 py-1 bg-white dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-lg hover:bg-neutral-50 dark:hover:bg-neutral-700 text-neutral-700 dark:text-neutral-300"
+                                title="סובב 90° עם כיוון השעון"
+                            >
+                                <ArrowPathIcon className="w-3.5 h-3.5" />
+                                <span className="font-mono text-[11px]">{imageRotation}°</span>
+                            </button>
+                            {(imageZoom !== 1 || imageRotation !== 0) && (
+                                <button
+                                    type="button"
+                                    onClick={() => { setImageZoom(1); setImageRotation(0); }}
+                                    className="px-2 py-1 text-[11px] text-blue-600 dark:text-blue-400 hover:underline"
+                                >
+                                    איפוס
+                                </button>
+                            )}
                         </div>
                     )}
 
@@ -367,7 +418,7 @@ export const UniversalFileViewerModal: React.FC<UniversalFileViewerModalProps> =
                         <button
                             type="button"
                             onClick={handleDownload}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-sky-600 hover:bg-sky-700 text-white text-xs sm:text-sm font-semibold rounded-lg shadow-xs transition"
+                            className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs sm:text-sm font-semibold rounded-xl shadow-xs transition active:scale-95"
                             title="הורד קובץ למכשיר"
                         >
                             <ArrowDownTrayIcon className="w-4 h-4" />
@@ -376,22 +427,22 @@ export const UniversalFileViewerModal: React.FC<UniversalFileViewerModalProps> =
                         <button
                             type="button"
                             onClick={handleOpenInNewTab}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 text-xs sm:text-sm font-medium rounded-lg shadow-2xs transition"
+                            className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-white dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 hover:bg-neutral-50 dark:hover:bg-neutral-700 text-neutral-700 dark:text-neutral-200 text-xs sm:text-sm font-medium rounded-xl shadow-2xs transition active:scale-95"
                             title="פתח בחלון מלא / כרטיסייה חדשה"
                         >
-                            <DocumentDuplicateIcon className="w-4 h-4 text-slate-500" />
+                            <DocumentDuplicateIcon className="w-4 h-4 text-neutral-500" />
                             <span>פתח בחלון מלא</span>
                         </button>
                     </div>
                 </div>
 
                 {/* Content Area */}
-                <div className="flex-grow overflow-auto p-2 sm:p-4 bg-slate-900/5 flex items-center justify-center relative">
+                <div className="flex-grow overflow-auto p-2 sm:p-4 bg-neutral-100/60 dark:bg-neutral-950/70 flex items-center justify-center relative">
                     {/* PDF Viewer Mode */}
                     {isPdf && (
                         <div className="w-full h-full flex flex-col items-center justify-center">
                             {viewMode === 'native' ? (
-                                <div className="w-full h-full bg-white rounded-xl shadow-xs overflow-hidden border border-slate-200">
+                                <div className="w-full h-full bg-white dark:bg-neutral-900 rounded-xl shadow-xs overflow-hidden border border-neutral-200 dark:border-neutral-800">
                                     {blobUrl ? (
                                         <object
                                             data={`${blobUrl}#toolbar=1&navpanes=0`}
@@ -403,8 +454,8 @@ export const UniversalFileViewerModal: React.FC<UniversalFileViewerModalProps> =
                                                 title={file.name}
                                                 className="w-full h-full min-h-[60vh] border-0"
                                             >
-                                                <div className="p-8 text-center bg-white h-full flex flex-col items-center justify-center gap-4">
-                                                    <p className="text-slate-700 font-medium">דפדפן זה אינו תומך בהטבעת PDF ישירה.</p>
+                                                <div className="p-8 text-center bg-white dark:bg-neutral-900 h-full flex flex-col items-center justify-center gap-4">
+                                                    <p className="text-neutral-700 dark:text-neutral-300 font-medium">דפדפן זה אינו תומך בהטבעת PDF ישירה.</p>
                                                     <button onClick={handleDownload} className="btn-primary py-2 px-4">
                                                         הורד את הקובץ לצפייה
                                                     </button>
@@ -413,20 +464,20 @@ export const UniversalFileViewerModal: React.FC<UniversalFileViewerModalProps> =
                                         </object>
                                     ) : (
                                         <div className="flex items-center justify-center h-full">
-                                            <ArrowPathIcon className="w-8 h-8 text-sky-600 animate-spin" />
+                                            <ArrowPathIcon className="w-8 h-8 text-blue-600 animate-spin" />
                                         </div>
                                     )}
                                 </div>
                             ) : (
                                 <div className="flex flex-col items-center justify-start min-h-full w-full py-4">
                                     {isLoadingPdf && (
-                                        <div className="absolute inset-0 bg-white/80 backdrop-blur-xs flex flex-col items-center justify-center gap-3 z-10">
-                                            <ArrowPathIcon className="w-8 h-8 text-sky-600 animate-spin" />
-                                            <p className="text-sm font-medium text-slate-700">טוען קובץ PDF עם מציג מסמכים מובנה...</p>
+                                        <div className="absolute inset-0 bg-white/80 dark:bg-neutral-900/80 backdrop-blur-xs flex flex-col items-center justify-center gap-3 z-10">
+                                            <ArrowPathIcon className="w-8 h-8 text-blue-600 animate-spin" />
+                                            <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300">טוען קובץ PDF עם מציג מסמכים מובנה...</p>
                                         </div>
                                     )}
 
-                                    <div className="bg-white p-2 sm:p-4 rounded-xl shadow-md border border-slate-200 overflow-auto max-w-full">
+                                    <div className="bg-white dark:bg-neutral-900 p-2 sm:p-4 rounded-xl shadow-md border border-neutral-200 dark:border-neutral-800 overflow-auto max-w-full">
                                         <canvas ref={canvasRef} className="max-w-full h-auto mx-auto block shadow-xs rounded" />
                                     </div>
                                 </div>
@@ -436,23 +487,27 @@ export const UniversalFileViewerModal: React.FC<UniversalFileViewerModalProps> =
 
                     {/* Image Viewer Mode */}
                     {isImage && (
-                        <div className="flex items-center justify-center max-h-full w-full p-2">
+                        <div className="flex items-center justify-center max-h-full w-full p-2 overflow-hidden">
                             <img
                                 src={blobUrl || fileSrc}
                                 alt={file.name}
-                                className="max-h-[70vh] max-w-full object-contain rounded-lg shadow-md border border-slate-200 bg-white"
+                                style={{
+                                    transform: `scale(${imageZoom}) rotate(${imageRotation}deg)`,
+                                    transition: 'transform 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
+                                }}
+                                className="max-h-[70vh] max-w-full object-contain rounded-xl shadow-md border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 origin-center"
                             />
                         </div>
                     )}
 
                     {/* Generic / Unknown File Type */}
                     {!isPdf && !isImage && (
-                        <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-200 text-center max-w-md my-auto">
-                            <div className="w-16 h-16 rounded-2xl bg-sky-50 text-sky-600 flex items-center justify-center mx-auto mb-4 border border-sky-100">
+                        <div className="bg-white dark:bg-neutral-900 p-8 rounded-2xl shadow-sm border border-neutral-200 dark:border-neutral-800 text-center max-w-md my-auto">
+                            <div className="w-16 h-16 rounded-2xl bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 flex items-center justify-center mx-auto mb-4 border border-blue-100 dark:border-blue-900">
                                 <FolderIcon className="w-8 h-8" />
                             </div>
-                            <h4 className="font-bold text-slate-800 text-lg mb-1">{file.name}</h4>
-                            <p className="text-xs text-slate-500 mb-6">
+                            <h4 className="font-bold text-neutral-800 dark:text-neutral-100 text-lg mb-1">{file.name}</h4>
+                            <p className="text-xs text-neutral-500 dark:text-neutral-400 mb-6">
                                 קובץ מסוג {file.mimeType || 'לא ידוע'}. ניתן להוריד את הקובץ ולפתוח אותו באמצעות תוכנה מתאימה במכשיר.
                             </p>
                             <button

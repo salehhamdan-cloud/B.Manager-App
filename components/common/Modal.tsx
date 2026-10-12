@@ -25,29 +25,33 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, size = 
 
   return (
     <div 
-        className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-[999] p-3 sm:p-4 animate-fadeIn"
-        style={{ animationDuration: '0.2s' }}
+        className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-xs p-0 sm:p-4 overflow-y-auto animate-fade-in"
         onClick={onClose}
         role="dialog"
         aria-modal="true"
         aria-labelledby="modal-title"
     >
       <div
-        className={`bg-white rounded-3xl shadow-2xl w-full ${sizeClasses[size]} flex flex-col max-h-[90vh] overflow-hidden border border-slate-200/90 animate-popIn`}
-        style={{ animationDuration: '0.25s' }}
+        className={`w-full sm:max-w-xl ${sizeClasses[size]} rounded-t-3xl sm:rounded-2xl bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 shadow-2xl flex flex-col max-h-[92vh] sm:max-h-[90vh] overflow-hidden`}
         onClick={e => e.stopPropagation()} // Prevent click inside modal from closing it
       >
-        <div className="flex items-center justify-between p-4 sm:p-5 border-b border-slate-100 bg-slate-50/70">
-          <h2 id="modal-title" className="text-lg sm:text-xl font-bold text-slate-900 tracking-tight">{title}</h2>
+        {/* Mobile drag indicator pill */}
+        <div className="sm:hidden w-12 h-1.5 bg-neutral-300 dark:bg-neutral-700 rounded-full mx-auto mt-2.5 mb-1" />
+
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-neutral-100 dark:border-neutral-800">
+          <h3 id="modal-title" className="text-base font-bold text-neutral-900 dark:text-neutral-100">{title}</h3>
           <button
             onClick={onClose}
-            className="p-1.5 text-slate-400 hover:text-slate-700 rounded-xl hover:bg-slate-200/70 active:scale-95 transition-all"
+            className="p-1.5 text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 rounded-xl hover:bg-neutral-100 dark:hover:bg-neutral-800 active:scale-95 transition-all"
             aria-label="סגור חלון"
           >
             <XMarkIcon className="w-5 h-5" />
           </button>
         </div>
-        <div className="overflow-y-auto flex-grow p-4 sm:p-6">
+
+        {/* Scrollable Body */}
+        <div className="flex-1 overflow-y-auto p-5 space-y-4 text-xs text-neutral-800 dark:text-neutral-200">
           {children}
         </div>
       </div>

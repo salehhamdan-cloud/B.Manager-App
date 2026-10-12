@@ -1,11 +1,32 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import * as XLSX from 'xlsx';
+import mammoth from 'mammoth';
 import { SparklesIcon } from '../components/icons/AiIcons';
+import { ArrowUpTrayIcon, TrashIcon } from '../components/icons/ActionIcons';
 import { useToast } from '../contexts/ToastContext';
+import { useSettings } from '../contexts/SettingsContext';
 import * as dbService from '../services/dbService';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import { generateId } from '../utils/idGenerator';
-import { Project, ProblemSeverity, QuotationStatus } from '../types';
+import { convertPdfToText } from '../utils/pdfUtils';
+import { smartExtractEntitiesWithAi, getActiveGeminiModel, setActiveGeminiModel } from '../services/aiService';
+import { GEMINI_MODELS } from '../constants';
+import { Project, ProblemSeverity, QuotationStatus, GeminiModelVersion } from '../types';
+
+export interface UploadedImportFile {
+    id: string;
+    file: File;
+    name: string;
+    size: number;
+    type: 'image' | 'pdf' | 'excel' | 'word' | 'text' | 'other';
+    previewUrl?: string;
+    extractedText?: string;
+    base64Data?: string;
+    mimeType?: string;
+    status: 'processing' | 'ready' | 'error';
+    summary?: string;
+}
 
 interface ExtractedTenant {
     id: string;
@@ -81,9 +102,16 @@ interface ExtractedInvoice {
 }
 
 const AISmartImportPage: React.FC = () => {
+    const { settings, updateSettings } = useSettings();
+    const [selectedModel, setSelectedModel] = useState<GeminiModelVersion>(
+        (settings.geminiModel as GeminiModelVersion) || (getActiveGeminiModel() as GeminiModelVersion) || 'gemini-3.8-flash'
+    );
+
     const [rawText, setRawText] = useState('');
+    const [uploadedFiles, setUploadedFiles] = useState<UploadedImportFile[]>([]);
     const [isExtracting, setIsExtracting] = useState(false);
     const [isCommitting, setIsCommitting] = useState(false);
+    const [isDragOver, setIsDragOver] = useState(false);
     const [activeTab, setActiveTab] = useState<'tenants' | 'buildings' | 'issues' | 'workers' | 'suppliers' | 'inventory' | 'invoices'>('tenants');
 
     // Extracted buckets
@@ -99,142 +127,338 @@ const AISmartImportPage: React.FC = () => {
 
     const { addToast } = useToast();
     const navigate = useNavigate();
+    const fileInputRef = useRef<HTMLInputElement>(null);
+
+    const handleModelChange = (modelId: GeminiModelVersion) => {
+        setSelectedModel(modelId);
+        setActiveGeminiModel(modelId);
+        updateSettings({ geminiModel: modelId }).catch(console.error);
+        addToast(`מודל ה-AI הוגדר ל: ${modelId}`, 'info');
+    };
+
+    // Process uploaded file (Images, PDF, Excel, Word, Text)
+    const processSingleFile = async (file: File): Promise<UploadedImportFile> => {
+        const id = generateId();
+        const fileName = file.name.toLowerCase();
+        let fileType: UploadedImportFile['type'] = 'other';
+
+        if (file.type.startsWith('image/') || /\.(jpg|jpeg|png|webp|bmp|gif)$/i.test(fileName)) {
+            fileType = 'image';
+        } else if (file.type === 'application/pdf' || fileName.endsWith('.pdf')) {
+            fileType = 'pdf';
+        } else if (fileName.endsWith('.xlsx') || fileName.endsWith('.xls') || fileName.endsWith('.csv') || file.type.includes('spreadsheet') || file.type.includes('excel')) {
+            fileType = 'excel';
+        } else if (fileName.endsWith('.docx') || fileName.endsWith('.doc') || file.type.includes('word')) {
+            fileType = 'word';
+        } else if (fileName.endsWith('.txt') || file.type.startsWith('text/')) {
+            fileType = 'text';
+        }
+
+        const item: UploadedImportFile = {
+            id,
+            file,
+            name: file.name,
+            size: file.size,
+            type: fileType,
+            status: 'processing',
+        };
+
+        try {
+            if (fileType === 'image') {
+                const dataUrl = await new Promise<string>((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = () => resolve(reader.result as string);
+                    reader.onerror = reject;
+                    reader.readAsDataURL(file);
+                });
+                const base64Data = dataUrl.split(',')[1] || '';
+                item.previewUrl = dataUrl;
+                item.base64Data = base64Data;
+                item.mimeType = file.type || 'image/jpeg';
+                item.status = 'ready';
+                item.summary = 'תמונה מוכנה לניתוח ויזואלי';
+            } else if (fileType === 'pdf') {
+                const dataUrl = await new Promise<string>((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = () => resolve(reader.result as string);
+                    reader.onerror = reject;
+                    reader.readAsDataURL(file);
+                });
+                const text = await convertPdfToText(dataUrl);
+                item.extractedText = text;
+                item.status = 'ready';
+                item.summary = `חולצו ${text.length} תווים מ-PDF`;
+            } else if (fileType === 'excel') {
+                const buffer = await file.arrayBuffer();
+                const workbook = XLSX.read(buffer, { type: 'array' });
+                let sheetContents = '';
+                workbook.SheetNames.forEach(sheetName => {
+                    const worksheet = workbook.Sheets[sheetName];
+                    const csv = XLSX.utils.sheet_to_csv(worksheet);
+                    if (csv && csv.trim()) {
+                        sheetContents += `\n--- גיליון: ${sheetName} ---\n` + csv;
+                    }
+                });
+                item.extractedText = sheetContents;
+                item.status = 'ready';
+                item.summary = `נקראו ${workbook.SheetNames.length} גיליונות Excel`;
+            } else if (fileType === 'word') {
+                const buffer = await file.arrayBuffer();
+                const result = await mammoth.extractRawText({ arrayBuffer: buffer });
+                item.extractedText = result.value || '';
+                item.status = 'ready';
+                item.summary = `חולצו ${result.value?.length || 0} תווים מ-Word`;
+            } else if (fileType === 'text') {
+                const text = await file.text();
+                item.extractedText = text;
+                item.status = 'ready';
+                item.summary = `נקרא קובץ טקסט (${text.length} תווים)`;
+            } else {
+                const text = await file.text().catch(() => '');
+                item.extractedText = text;
+                item.status = 'ready';
+                item.summary = `קובץ נקרא`;
+            }
+        } catch (err) {
+            console.error('File parsing error for', file.name, err);
+            item.status = 'error';
+            item.summary = 'שגיאה בפענוח הקובץ';
+        }
+
+        return item;
+    };
+
+    const handleFilesSelected = async (filesList: FileList | null) => {
+        if (!filesList || filesList.length === 0) return;
+        const filesArray = Array.from(filesList);
+        addToast(`מעבד ${filesArray.length} קבצים...`, 'info');
+
+        const processed = await Promise.all(filesArray.map(f => processSingleFile(f)));
+        setUploadedFiles(prev => [...prev, ...processed]);
+        addToast('הקבצים נטענו ומוכנים לחילוץ עם AI', 'success');
+    };
+
+    const handleRemoveFile = (id: string) => {
+        setUploadedFiles(prev => prev.filter(f => f.id !== id));
+    };
+
+    // Client-side heuristic fallback (multilingual Hebrew & Arabic)
+    const runFallbackHeuristicExtraction = (text: string) => {
+        const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+        const tenants: ExtractedTenant[] = [];
+        const buildings: ExtractedBuilding[] = [];
+        const issues: ExtractedIssue[] = [];
+        const workers: ExtractedWorker[] = [];
+        const suppliers: ExtractedSupplier[] = [];
+        const inventory: ExtractedInventory[] = [];
+        const invoices: ExtractedInvoice[] = [];
+
+        lines.forEach((line) => {
+            const lower = line.toLowerCase();
+            const phoneMatch = line.match(/(?:05\d-?\d{7}|0[23489]-?\d{7}|\+972-?\d{1,2}-?\d{7}|\+970-?\d{1,2}-?\d{7})/);
+            const emailMatch = line.match(/[\w.-]+@[\w.-]+\.\w+/);
+            const aptMatch = line.match(/(?:דירה|דירת|unit|apt|شقة|דיר'?)[:\s]+(\d+)/i) || line.match(/(?:דירה|شقة)\s*(\d+)/i);
+            const rentMatch = line.match(/(?:שכירות|שכ"ד|rent|מחיר|إيجار|اجار)[\s:]*([0-9,.]+)/i);
+
+            // Tenant detection (Hebrew / Arabic / English)
+            if (lower.includes('דייר') || lower.includes('tenant') || lower.includes('מסטאג׳ר') || lower.includes('مستأجر') || lower.includes('ساكن') || (phoneMatch && (aptMatch || rentMatch))) {
+                const parts = line.split(/[,;\t|]| - /).map(p => p.trim());
+                const name = parts[0]?.replace(/(?:דייר|שם|tenant|مستأجر|ساكن)[:\s]*/i, '') || 'דייר חדש';
+                tenants.push({
+                    id: generateId(),
+                    selected: true,
+                    name: name.slice(0, 30),
+                    phone: phoneMatch ? phoneMatch[0] : '',
+                    email: emailMatch ? emailMatch[0] : '',
+                    apartmentNumber: aptMatch ? aptMatch[1] : '1',
+                    floorNumber: '1',
+                    rentAmount: rentMatch ? parseFloat(rentMatch[1].replace(/,/g, '')) : undefined,
+                    leaseStartDate: new Date().toISOString().split('T')[0],
+                    leaseEndDate: new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().split('T')[0],
+                });
+            }
+            // Building detection
+            else if (lower.includes('בניין') || lower.includes('רחוב') || lower.includes('building') || lower.includes('נכס') || lower.includes('عمارة') || lower.includes('مבنى') || lower.includes('شارع') || lower.includes('עקאר')) {
+                const parts = line.split(/[,;\t|]| - /).map(p => p.trim());
+                buildings.push({
+                    id: generateId(),
+                    selected: true,
+                    name: parts[0]?.replace(/(?:בניין|building|عمارة|مבنى)[:\s]*/i, '') || 'בניין חדש',
+                    address: parts[1] || parts[0] || 'כתובת',
+                    apartmentsCount: 10,
+                    managerName: 'מנהל נכס',
+                    managerPhone: phoneMatch ? phoneMatch[0] : '',
+                });
+            }
+            // Issue / Problem detection
+            else if (lower.includes('תקלה') || lower.includes('נזילה') || lower.includes('שבר') || lower.includes('issue') || lower.includes('קצר') || lower.includes('סתימה') || lower.includes('משכלה') || lower.includes('مشكلة') || lower.includes('تسريب') || lower.includes('עטל') || lower.includes('عطل')) {
+                issues.push({
+                    id: generateId(),
+                    selected: true,
+                    title: line.slice(0, 40),
+                    description: line,
+                    priority: lower.includes('דחוף') || lower.includes('קריטי') || lower.includes('עאג׳ל') || lower.includes('عاجل') ? ProblemSeverity.CRITICAL : ProblemSeverity.HIGH,
+                    apartmentNumber: aptMatch ? aptMatch[1] : undefined,
+                });
+            }
+            // Worker / Technician
+            else if (lower.includes('אינסטלטור') || lower.includes('חשמלאי') || lower.includes('טכנאי') || lower.includes('קבלן') || lower.includes('worker') || lower.includes('technician') || lower.includes('פני') || lower.includes('فني') || lower.includes('עאמל') || lower.includes('عامل')) {
+                const parts = line.split(/[,;\t|]| - /).map(p => p.trim());
+                workers.push({
+                    id: generateId(),
+                    selected: true,
+                    name: parts[0]?.replace(/(?:טכנאי|עובד|קבלן|فني|عامل)[:\s]*/i, '') || 'איש מקצוע',
+                    specialty: parts[1] || 'תחזוקה כללית',
+                    phone: phoneMatch ? phoneMatch[0] : '',
+                    email: emailMatch ? emailMatch[0] : '',
+                });
+            }
+            // Supplier detection
+            else if (lower.includes('ספק') || lower.includes('חומרי') || lower.includes('supplier') || lower.includes('חברת') || lower.includes('מורד') || lower.includes('مورد') || lower.includes('שרכה') || lower.includes('شركة')) {
+                const parts = line.split(/[,;\t|]| - /).map(p => p.trim());
+                suppliers.push({
+                    id: generateId(),
+                    selected: true,
+                    name: parts[0]?.replace(/(?:ספק|חברה|مورد|شركة)[:\s]*/i, '') || 'ספק חדש',
+                    category: parts[1] || 'ציוד ואחזקה',
+                    phone: phoneMatch ? phoneMatch[0] : '',
+                    email: emailMatch ? emailMatch[0] : '',
+                });
+            }
+            // Inventory
+            else if (lower.includes('מלאי') || lower.includes('כמות') || lower.includes('יחידות') || lower.includes('sku') || lower.includes('מח׳זון') || lower.includes('مخزون') || lower.includes('כמיה') || lower.includes('كمية')) {
+                const qtyMatch = line.match(/(?:כמות|qty|יחידות|كمية)[:\s]*(\d+)/i) || line.match(/(\d+)\s*(?:יח'|יחידות|pcs)/);
+                inventory.push({
+                    id: generateId(),
+                    selected: true,
+                    name: line.slice(0, 30),
+                    quantity: qtyMatch ? parseInt(qtyMatch[1]) : 5,
+                    location: 'מחסן ראשי',
+                });
+            }
+            // Invoice
+            else if (lower.includes('חשבונית') || lower.includes('invoice') || lower.includes('קבלה') || lower.includes('לתשלום') || lower.includes('פאטורה') || lower.includes('فاتورة')) {
+                const invNumMatch = line.match(/(?:חשבונית|מספר|inv|#|فاتورة)[:\s]*(\d+)/i);
+                const amountMatch = line.match(/(?:סה"כ|סך|amount|לתשלום|مبلغ)[:\s]*([0-9,.]+)/i);
+                invoices.push({
+                    id: generateId(),
+                    selected: true,
+                    invoiceNumber: invNumMatch ? invNumMatch[1] : String(Math.floor(1000 + Math.random() * 9000)),
+                    supplierName: line.slice(0, 25),
+                    amount: amountMatch ? parseFloat(amountMatch[1].replace(/,/g, '')) : 500,
+                    date: new Date().toISOString().split('T')[0],
+                });
+            }
+        });
+
+        return { tenants, buildings, issues, workers, suppliers, inventory, invoices };
+    };
 
     const handleRunExtraction = async () => {
-        if (!rawText.trim()) {
-            addToast('נא להדביק טקסט, נתוני טבלה או מייל לניתוח', 'warning');
+        const fileTexts = uploadedFiles
+            .map(f => (f.extractedText ? `\n[קובץ: ${f.name}]\n${f.extractedText}` : ''))
+            .filter(Boolean)
+            .join('\n\n');
+
+        const combinedText = [rawText.trim(), fileTexts].filter(Boolean).join('\n\n');
+
+        const imageList = uploadedFiles
+            .filter(f => f.type === 'image' && f.base64Data && f.mimeType)
+            .map(f => ({ base64Data: f.base64Data!, mimeType: f.mimeType! }));
+
+        if (!combinedText && imageList.length === 0) {
+            addToast('נא להעלות קבצים (תמונות, PDF, Excel, Word) או להדביק טקסט לניתוח', 'warning');
             return;
         }
 
         setIsExtracting(true);
-        addToast('ה-AI מנתח את הנתונים ומזהה ישויות...', 'info');
+        addToast(`ה-AI מנתח את הנתונים באמצעות ${selectedModel}...`, 'info');
 
         try {
-            // Intelligent heuristic parser with Gemini prompt simulation / fallback
-            const lines = rawText.split('\n').map(l => l.trim()).filter(Boolean);
-            
-            const tenants: ExtractedTenant[] = [];
-            const buildings: ExtractedBuilding[] = [];
-            const issues: ExtractedIssue[] = [];
-            const workers: ExtractedWorker[] = [];
-            const suppliers: ExtractedSupplier[] = [];
-            const inventory: ExtractedInventory[] = [];
-            const invoices: ExtractedInvoice[] = [];
+            let resultData: any;
+            try {
+                resultData = await smartExtractEntitiesWithAi({
+                    text: combinedText,
+                    images: imageList,
+                    preferredModel: selectedModel,
+                });
+            } catch (aiErr) {
+                console.warn('Gemini API call returned error, using multilingual heuristic fallback:', aiErr);
+                resultData = runFallbackHeuristicExtraction(combinedText);
+            }
 
-            // Detect structured or semi-structured data
-            lines.forEach((line) => {
-                const lower = line.toLowerCase();
-                
-                // Tenant detection (name, phone, apartment, rent)
-                const phoneMatch = line.match(/(?:05\d-?\d{7}|0[23489]-?\d{7}|\+972-?\d{1,2}-?\d{7})/);
-                const emailMatch = line.match(/[\w.-]+@[\w.-]+\.\w+/);
-                const aptMatch = line.match(/(?:דירה|דירת|unit|apt|דיר'?)[:\s]+(\d+)/i) || line.match(/דירה\s*(\d+)/);
-                const rentMatch = line.match(/(?:שכירות|שכ"ד|rent|מחיר)[\s:]*([0-9,.]+)/i);
+            const tenants: ExtractedTenant[] = (resultData.tenants || []).map((t: any) => ({
+                id: generateId(),
+                selected: true,
+                name: t.name || 'דייר',
+                phone: t.phone || '',
+                email: t.email || '',
+                apartmentNumber: String(t.apartmentNumber || '1'),
+                floorNumber: String(t.floorNumber || '1'),
+                rentAmount: t.rentAmount ? Number(t.rentAmount) : undefined,
+                leaseStartDate: t.leaseStartDate || new Date().toISOString().split('T')[0],
+                leaseEndDate: t.leaseEndDate || new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().split('T')[0],
+                contactPerson: t.contactPerson,
+                buildingName: t.buildingName,
+            }));
 
-                if (lower.includes('דייר') || lower.includes('tenant') || (phoneMatch && (aptMatch || rentMatch))) {
-                    const parts = line.split(/[,;\t|]| - /).map(p => p.trim());
-                    const name = parts[0]?.replace(/(?:דייר|שם|tenant)[:\s]*/i, '') || 'דייר חדש';
-                    tenants.push({
-                        id: generateId(),
-                        selected: true,
-                        name: name.slice(0, 30),
-                        phone: phoneMatch ? phoneMatch[0] : '',
-                        email: emailMatch ? emailMatch[0] : '',
-                        apartmentNumber: aptMatch ? aptMatch[1] : '1',
-                        floorNumber: '1',
-                        rentAmount: rentMatch ? parseFloat(rentMatch[1].replace(/,/g, '')) : undefined,
-                        leaseStartDate: new Date().toISOString().split('T')[0],
-                        leaseEndDate: new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().split('T')[0],
-                    });
-                }
-                // Building detection
-                else if (lower.includes('בניין') || lower.includes('רחוב') || lower.includes('building') || lower.includes('נכס')) {
-                    const parts = line.split(/[,;\t|]| - /).map(p => p.trim());
-                    buildings.push({
-                        id: generateId(),
-                        selected: true,
-                        name: parts[0]?.replace(/(?:בניין|building)[:\s]*/i, '') || 'בניין חדש',
-                        address: parts[1] || parts[0] || 'כתובת',
-                        apartmentsCount: 10,
-                        managerName: 'מנהל נכס',
-                        managerPhone: phoneMatch ? phoneMatch[0] : '',
-                    });
-                }
-                // Issue / problem detection
-                else if (lower.includes('תקלה') || lower.includes('נזילה') || lower.includes('שבר') || lower.includes('issue') || lower.includes('קצר') || lower.includes('סתימה')) {
-                    issues.push({
-                        id: generateId(),
-                        selected: true,
-                        title: line.slice(0, 40),
-                        description: line,
-                        priority: lower.includes('דחוף') || lower.includes('קריטי') ? ProblemSeverity.CRITICAL : ProblemSeverity.HIGH,
-                        apartmentNumber: aptMatch ? aptMatch[1] : undefined,
-                    });
-                }
-                // Worker / technician detection
-                else if (lower.includes('אינסטלטור') || lower.includes('חשמלאי') || lower.includes('טכנאי') || lower.includes('קבלן') || lower.includes('worker') || lower.includes('technician')) {
-                    const parts = line.split(/[,;\t|]| - /).map(p => p.trim());
-                    workers.push({
-                        id: generateId(),
-                        selected: true,
-                        name: parts[0]?.replace(/(?:טכנאי|עובד|קבלן)[:\s]*/i, '') || 'איש מקצוע',
-                        specialty: parts[1] || 'תחזוקה כללית',
-                        phone: phoneMatch ? phoneMatch[0] : '',
-                        email: emailMatch ? emailMatch[0] : '',
-                    });
-                }
-                // Supplier detection
-                else if (lower.includes('ספק') || lower.includes('חומרי') || lower.includes('supplier') || lower.includes('חברת')) {
-                    const parts = line.split(/[,;\t|]| - /).map(p => p.trim());
-                    suppliers.push({
-                        id: generateId(),
-                        selected: true,
-                        name: parts[0]?.replace(/(?:ספק|חברה)[:\s]*/i, '') || 'ספק חדש',
-                        category: parts[1] || 'ציוד ואחזקה',
-                        phone: phoneMatch ? phoneMatch[0] : '',
-                        email: emailMatch ? emailMatch[0] : '',
-                    });
-                }
-                // Inventory detection
-                else if (lower.includes('מלאי') || lower.includes('כמות') || lower.includes('יחידות') || lower.includes('מנור') || lower.includes('ברז') || lower.includes('sku')) {
-                    const qtyMatch = line.match(/(?:כמות|qty|יחידות)[:\s]*(\d+)/i) || line.match(/(\d+)\s*(?:יח'|יחידות|pcs)/);
-                    inventory.push({
-                        id: generateId(),
-                        selected: true,
-                        name: line.slice(0, 30),
-                        quantity: qtyMatch ? parseInt(qtyMatch[1]) : 5,
-                        location: 'מחסן ראשי',
-                    });
-                }
-                // Invoice detection
-                else if (lower.includes('חשבונית') || lower.includes('invoice') || lower.includes('קבלה') || lower.includes('לתשלום')) {
-                    const invNumMatch = line.match(/(?:חשבונית|מספר|inv|#)[:\s]*(\d+)/i);
-                    const amountMatch = line.match(/(?:סה"כ|סך|amount|לתשלום)[:\s]*([0-9,.]+)/i);
-                    invoices.push({
-                        id: generateId(),
-                        selected: true,
-                        invoiceNumber: invNumMatch ? invNumMatch[1] : String(Math.floor(1000 + Math.random() * 9000)),
-                        supplierName: line.slice(0, 25),
-                        amount: amountMatch ? parseFloat(amountMatch[1].replace(/,/g, '')) : 500,
-                        date: new Date().toISOString().split('T')[0],
-                    });
-                }
-                // Default fallback: if has phone or apartment, treat as tenant
-                else if (phoneMatch || aptMatch) {
-                    tenants.push({
-                        id: generateId(),
-                        selected: true,
-                        name: line.slice(0, 25),
-                        phone: phoneMatch ? phoneMatch[0] : '',
-                        email: emailMatch ? emailMatch[0] : '',
-                        apartmentNumber: aptMatch ? aptMatch[1] : '1',
-                        floorNumber: '1',
-                        rentAmount: 3500,
-                        leaseStartDate: new Date().toISOString().split('T')[0],
-                        leaseEndDate: new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().split('T')[0],
-                    });
-                }
-            });
+            const buildings: ExtractedBuilding[] = (resultData.buildings || []).map((b: any) => ({
+                id: generateId(),
+                selected: true,
+                name: b.name || 'בניין חדש',
+                address: b.address || b.name || 'כתובת',
+                apartmentsCount: b.apartmentsCount ? Number(b.apartmentsCount) : 10,
+                managerName: b.managerName || '',
+                managerPhone: b.managerPhone || '',
+            }));
+
+            const issues: ExtractedIssue[] = (resultData.issues || []).map((i: any) => ({
+                id: generateId(),
+                selected: true,
+                title: i.title || 'תקלה שזוהתה',
+                description: i.description || i.title || '',
+                priority: (i.priority as ProblemSeverity) || ProblemSeverity.MEDIUM,
+                apartmentNumber: i.apartmentNumber,
+                buildingName: i.buildingName,
+            }));
+
+            const workers: ExtractedWorker[] = (resultData.workers || []).map((w: any) => ({
+                id: generateId(),
+                selected: true,
+                name: w.name || 'איש מקצוע',
+                specialty: w.specialty || 'תחזוקה',
+                phone: w.phone || '',
+                email: w.email || '',
+            }));
+
+            const suppliers: ExtractedSupplier[] = (resultData.suppliers || []).map((s: any) => ({
+                id: generateId(),
+                selected: true,
+                name: s.name || 'ספק',
+                category: s.category || 'כללי',
+                phone: s.phone || '',
+                email: s.email || '',
+            }));
+
+            const inventory: ExtractedInventory[] = (resultData.inventory || []).map((inv: any) => ({
+                id: generateId(),
+                selected: true,
+                name: inv.name || 'פריט מלאי',
+                quantity: inv.quantity ? Number(inv.quantity) : 1,
+                sku: inv.sku,
+                location: inv.location || 'מחסן ראשי',
+                buildingName: inv.buildingName,
+            }));
+
+            const invoices: ExtractedInvoice[] = (resultData.invoices || []).map((inv: any) => ({
+                id: generateId(),
+                selected: true,
+                invoiceNumber: String(inv.invoiceNumber || Math.floor(1000 + Math.random() * 9000)),
+                supplierName: inv.supplierName || 'ספק',
+                amount: inv.amount ? Number(inv.amount) : 0,
+                date: inv.date || new Date().toISOString().split('T')[0],
+                buildingName: inv.buildingName,
+            }));
 
             setExtractedTenants(tenants);
             setExtractedBuildings(buildings);
@@ -246,23 +470,29 @@ const AISmartImportPage: React.FC = () => {
 
             const total = tenants.length + buildings.length + issues.length + workers.length + suppliers.length + inventory.length + invoices.length;
             if (total === 0) {
-                // If nothing was caught, create at least a generic issue or tenant from text
                 setExtractedIssues([{
                     id: generateId(),
                     selected: true,
-                    title: rawText.slice(0, 40) || 'תקלה שזוהתה',
-                    description: rawText,
+                    title: combinedText.slice(0, 40) || 'תקלה שזוהתה',
+                    description: combinedText.slice(0, 200) || 'נתונים שנותחו מקובץ',
                     priority: ProblemSeverity.MEDIUM,
                 }]);
-                addToast('ה-AI זיהה ישות אחת מתוך הטקסט', 'info');
+                addToast('ה-AI זיהה ישות אחת מתוך הנתונים', 'info');
             } else {
-                addToast(`ה-AI חילץ בהצלחה ${total} ישויות! באפשרותך לערוך לפני שמירה.`, 'success');
+                addToast(`ה-AI חילץ בהצלחה ${total} ישויות מתוך הקבצים והטקסט!`, 'success');
+                if (tenants.length > 0) setActiveTab('tenants');
+                else if (buildings.length > 0) setActiveTab('buildings');
+                else if (issues.length > 0) setActiveTab('issues');
+                else if (workers.length > 0) setActiveTab('workers');
+                else if (suppliers.length > 0) setActiveTab('suppliers');
+                else if (inventory.length > 0) setActiveTab('inventory');
+                else if (invoices.length > 0) setActiveTab('invoices');
             }
 
             setHasExtracted(true);
         } catch (error) {
             console.error('Smart import extraction error:', error);
-            addToast('שגיאה בניתוח הטקסט', 'error');
+            addToast('שגיאה בניתוח הנתונים', 'error');
         } finally {
             setIsExtracting(false);
         }
@@ -438,62 +668,220 @@ const AISmartImportPage: React.FC = () => {
     };
 
     return (
-        <div className="space-y-6 animate-fadeIn max-w-6xl mx-auto">
-            {/* Header */}
-            <div className="bg-white border border-slate-200/90 rounded-3xl p-5 sm:p-6 shadow-xs flex items-center gap-4">
-                <div className="p-3.5 bg-gradient-to-tr from-sky-500 to-indigo-600 text-white rounded-2xl shadow-sm">
-                    <SparklesIcon className="w-8 h-8" />
+        <div className="space-y-6 animate-fadeIn max-w-6xl mx-auto pb-12" dir="rtl">
+            {/* Header with Gemini Model Selector */}
+            <div className="bg-white dark:bg-neutral-800/90 border border-slate-200/90 dark:border-neutral-700 rounded-3xl p-5 sm:p-6 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div className="flex items-center gap-4">
+                    <div className="p-3.5 bg-gradient-to-tr from-sky-500 to-indigo-600 text-white rounded-2xl shadow-sm flex-shrink-0">
+                        <SparklesIcon className="w-8 h-8" />
+                    </div>
+                    <div>
+                        <h1 className="text-xl sm:text-2xl font-black text-slate-800 dark:text-slate-100 tracking-tight flex items-center gap-2">
+                            ייבוא חכם באמצעות AI ✨
+                        </h1>
+                        <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
+                            העלה קובצי PDF, תמונות/צילומים, גיליונות Excel, מסמכי Word או טקסט בעברית וערבית (العربية) — ה-AI יסווג הכל לחלק המתאים
+                        </p>
+                    </div>
                 </div>
-                <div>
-                    <h1 className="text-xl sm:text-2xl font-black text-slate-800 tracking-tight">
-                        ייבוא חכם באמצעות AI ✨
-                    </h1>
-                    <p className="text-xs sm:text-sm text-slate-500 mt-1">
-                        הדבק טקסט חופשי, מיילים, הודעות וואטסאפ, רשימות אקסל, או דוחות - והמערכת תחלץ דיירים, בניינים, תקלות, ספקים וחשבוניות ישירות למסד הנתונים
-                    </p>
+
+                {/* Gemini Model Selector */}
+                <div className="bg-slate-50 dark:bg-neutral-900 border border-slate-200 dark:border-neutral-700/80 rounded-2xl p-2.5 flex items-center gap-2 flex-shrink-0">
+                    <span className="text-xs font-bold text-slate-600 dark:text-slate-300">מודל AI:</span>
+                    <select
+                        value={selectedModel}
+                        onChange={e => handleModelChange(e.target.value as GeminiModelVersion)}
+                        className="text-xs font-bold bg-white dark:bg-neutral-800 text-slate-800 dark:text-slate-100 border border-slate-200 dark:border-neutral-700 rounded-xl px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-sky-500 cursor-pointer shadow-2xs"
+                    >
+                        {GEMINI_MODELS.map(m => (
+                            <option key={m.id} value={m.id}>
+                                {m.name} {m.badge ? `(${m.badge})` : ''}
+                            </option>
+                        ))}
+                    </select>
                 </div>
             </div>
 
-            {/* Input Section */}
-            <div className="bg-white p-5 sm:p-6 rounded-3xl shadow-xs border border-slate-200/90 space-y-4">
-                <div className="flex justify-between items-center">
-                    <label className="text-xs font-bold text-slate-700">
-                        הדבק תוכן גולמי (עברית / אנגלית / ערבית):
+            {/* Input Section: File Upload & Raw Text */}
+            <div className="bg-white dark:bg-neutral-800/90 p-5 sm:p-6 rounded-3xl shadow-xs border border-slate-200/90 dark:border-neutral-700 space-y-5">
+                {/* Drag and Drop Zone */}
+                <div>
+                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-2">
+                        העלאת קבצים לייבוא (תמונות, PDF, Excel, Word):
                     </label>
-                    <button
-                        type="button"
-                        onClick={() => setRawText(
-                            `רשימת דיירים בניין הרצל 15 תל אביב:\n` +
-                            `דייר: ישראל ישראלי, דירה 4, טלפון: 050-1234567, שכ"ד: 4,500 ש"ח\n` +
-                            `דיירת: רחל כהן, דירה 8, טלפון: 052-9876543, שכ"ד: 5,200 ש"ח\n\n` +
-                            `תקלות דחופות:\n` +
-                            `נזילה חמורה מצינור ראשי בלובי כניסה - קריטי\n` +
-                            `נורה שרופה בקומה 2 ליד המעלית\n\n` +
-                            `חשבונית מספר 4022 מחברת מעליות שיא בע"מ על סך 1,850 ש"ח`
-                        )}
-                        className="text-xs text-sky-600 hover:text-sky-700 font-bold hover:underline"
+
+                    <div
+                        onDragOver={e => {
+                            e.preventDefault();
+                            setIsDragOver(true);
+                        }}
+                        onDragLeave={() => setIsDragOver(false)}
+                        onDrop={e => {
+                            e.preventDefault();
+                            setIsDragOver(false);
+                            handleFilesSelected(e.dataTransfer.files);
+                        }}
+                        onClick={() => fileInputRef.current?.click()}
+                        className={`border-2 border-dashed rounded-2xl p-6 sm:p-8 text-center cursor-pointer transition-all ${
+                            isDragOver
+                                ? 'border-sky-500 bg-sky-50/80 dark:bg-sky-950/30 ring-4 ring-sky-100 dark:ring-sky-900/30'
+                                : 'border-slate-300 dark:border-neutral-700 hover:border-sky-400 dark:hover:border-sky-600 hover:bg-slate-50/60 dark:hover:bg-neutral-800/60'
+                        }`}
                     >
-                        טען טקסט לדוגמה
-                    </button>
+                        <input
+                            ref={fileInputRef}
+                            type="file"
+                            multiple
+                            accept="image/*,.pdf,.xlsx,.xls,.csv,.docx,.doc,.txt"
+                            onChange={e => handleFilesSelected(e.target.files)}
+                            className="hidden"
+                        />
+                        <div className="flex flex-col items-center gap-3">
+                            <div className="w-12 h-12 rounded-2xl bg-sky-50 dark:bg-sky-950/60 text-sky-600 dark:text-sky-400 flex items-center justify-center shadow-xs">
+                                <ArrowUpTrayIcon className="w-6 h-6" />
+                            </div>
+                            <div>
+                                <p className="text-sm font-bold text-slate-800 dark:text-slate-200">
+                                    גרור לכאן קבצים או <span className="text-sky-600 dark:text-sky-400 underline">לחץ לבחירה מהמכשיר</span>
+                                </p>
+                                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                                    תומך תמונות (JPG, PNG), קובצי PDF, גיליונות Excel (XLSX, CSV), מסמכי Word (DOCX) וטקסט
+                                </p>
+                            </div>
+
+                            {/* Format badges */}
+                            <div className="flex flex-wrap items-center justify-center gap-2 mt-1">
+                                <span className="text-[11px] font-semibold px-2.5 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                                    📊 Excel / CSV
+                                </span>
+                                <span className="text-[11px] font-semibold px-2.5 py-1 rounded-full bg-rose-50 dark:bg-rose-950/50 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800">
+                                    📄 PDF
+                                </span>
+                                <span className="text-[11px] font-semibold px-2.5 py-1 rounded-full bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+                                    📝 Word (.docx)
+                                </span>
+                                <span className="text-[11px] font-semibold px-2.5 py-1 rounded-full bg-purple-50 dark:bg-purple-950/50 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
+                                    📷 צילומים ותמונות
+                                </span>
+                                <span className="text-[11px] font-semibold px-2.5 py-1 rounded-full bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
+                                    🌐 עברית וערבית (العربية)
+                                </span>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
-                <textarea
-                    value={rawText}
-                    onChange={e => setRawText(e.target.value)}
-                    rows={6}
-                    className="w-full text-xs font-mono bg-slate-50 border border-slate-200 rounded-2xl p-4 text-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 transition-all resize-y"
-                    placeholder="לדוגמה: הדבק כאן הודעת וואטסאפ, טבלת דיירים, פירוט תקלות או חשבוניות..."
-                />
+                {/* Uploaded Files Cards List */}
+                {uploadedFiles.length > 0 && (
+                    <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                            <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                                קבצים שנטענו ({uploadedFiles.length}):
+                            </span>
+                            <button
+                                type="button"
+                                onClick={() => setUploadedFiles([])}
+                                className="text-xs text-rose-600 hover:text-rose-700 font-semibold cursor-pointer"
+                            >
+                                נקה את כל הקבצים
+                            </button>
+                        </div>
 
-                <div className="flex justify-end">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                            {uploadedFiles.map(f => (
+                                <div
+                                    key={f.id}
+                                    className="p-3 rounded-2xl border border-slate-200 dark:border-neutral-700 bg-slate-50/70 dark:bg-neutral-900/60 flex items-center justify-between gap-3"
+                                >
+                                    <div className="flex items-center gap-3 min-w-0">
+                                        {f.type === 'image' && f.previewUrl ? (
+                                            <img
+                                                src={f.previewUrl}
+                                                alt={f.name}
+                                                className="w-10 h-10 rounded-xl object-cover border border-slate-200 dark:border-neutral-700 flex-shrink-0"
+                                            />
+                                        ) : (
+                                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-xs flex-shrink-0 ${
+                                                f.type === 'excel'
+                                                    ? 'bg-emerald-100 text-emerald-800'
+                                                    : f.type === 'pdf'
+                                                    ? 'bg-rose-100 text-rose-800'
+                                                    : f.type === 'word'
+                                                    ? 'bg-blue-100 text-blue-800'
+                                                    : 'bg-slate-200 text-slate-800'
+                                            }`}>
+                                                {f.type === 'excel' ? 'XLS' : f.type === 'pdf' ? 'PDF' : f.type === 'word' ? 'DOC' : 'TXT'}
+                                            </div>
+                                        )}
+                                        <div className="min-w-0">
+                                            <p className="text-xs font-bold text-slate-800 dark:text-slate-100 truncate">
+                                                {f.name}
+                                            </p>
+                                            <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
+                                                {(f.size / 1024).toFixed(1)} KB • {f.summary || 'מוכן לניתוח'}
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    <button
+                                        type="button"
+                                        onClick={() => handleRemoveFile(f.id)}
+                                        className="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-white dark:hover:bg-neutral-800 transition-colors flex-shrink-0 cursor-pointer"
+                                        title="הסר קובץ"
+                                    >
+                                        <TrashIcon className="w-4 h-4" />
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
+                {/* Raw Text Textarea */}
+                <div>
+                    <div className="flex justify-between items-center mb-2">
+                        <label className="text-xs font-bold text-slate-700 dark:text-slate-200">
+                            או הדבק טקסט חופשי / הודעות וואטסאפ / נתוני טבלה:
+                        </label>
+                        <button
+                            type="button"
+                            onClick={() => setRawText(
+                                `רשימת דיירים בניין הרצל 15 תל אביב:\n` +
+                                `דייר: ישראל ישראלי, דירה 4, טלפון: 050-1234567, שכ"ד: 4,500 ש"ח\n` +
+                                `مستأجر: أحمد خليل, شقة 8, هاتف: 052-9876543, إيجار: 5,200 شيكل\n\n` +
+                                `תקלות דחופות:\n` +
+                                `נזילה חמורה מצינור ראשי בלובי כניסה - קריטי\n` +
+                                `تسريب مياه في الطابق الثاني بجانب المصعد - عاجل\n\n` +
+                                `חשבונית מספר 4022 מחברת מעליות שיא בע"מ על סך 1,850 ש"ח`
+                            )}
+                            className="text-xs text-sky-600 dark:text-sky-400 hover:underline font-bold cursor-pointer"
+                        >
+                            טען טקסט לדוגמה (עברית וערבית)
+                        </button>
+                    </div>
+
+                    <textarea
+                        value={rawText}
+                        onChange={e => setRawText(e.target.value)}
+                        rows={4}
+                        className="w-full text-xs font-mono bg-slate-50 dark:bg-neutral-900 border border-slate-200 dark:border-neutral-700 rounded-2xl p-4 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 transition-all resize-y"
+                        placeholder="לדוגמה: הדבק כאן רשימות דיירים, הודעות, תקלות או נתונים בעברית, ערבית או אנגלית..."
+                    />
+                </div>
+
+                {/* Action button */}
+                <div className="flex flex-col sm:flex-row justify-between items-center gap-3 pt-2">
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                        ה-AI קורא ומזהה דיירים, תקלות, עובדים, ספקים, מלאי וחשבוניות ישירות מהקבצים והטקסט
+                    </p>
                     <button
                         onClick={handleRunExtraction}
-                        disabled={isExtracting || !rawText.trim()}
-                        className="btn-primary flex items-center gap-2 px-6 py-2.5 shadow-sm font-bold text-sm rounded-xl"
+                        disabled={isExtracting || (!rawText.trim() && uploadedFiles.length === 0)}
+                        className="btn-primary flex items-center gap-2 px-7 py-3 shadow-sm font-bold text-sm rounded-xl w-full sm:w-auto justify-center cursor-pointer disabled:opacity-50"
                     >
                         {isExtracting ? (
                             <>
-                                <LoadingSpinner size="sm" /> מנתח נתונים...
+                                <LoadingSpinner size="sm" /> מנתח קבצים וטקסט עם {selectedModel}...
                             </>
                         ) : (
                             <>

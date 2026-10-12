@@ -3,17 +3,26 @@ import { TenantWithContext, Tenant, Project } from '../types';
 import * as dbService from '../services/dbService';
 import { useToast } from '../contexts/ToastContext';
 import LoadingSpinner from '../components/common/LoadingSpinner';
-import { ArrowDownTrayIcon, PlusIcon, PencilIcon, TrashIcon, MagnifyingGlassIcon } from '../components/icons/ActionIcons';
+import {
+  UserGroupIcon,
+  PlusIcon,
+  PencilIcon,
+  TrashIcon,
+  ArrowDownTrayIcon,
+  SparklesIcon,
+  MagnifyingGlassIcon,
+  ClipboardDocumentCheckIcon,
+  PhoneIcon,
+  EnvelopeIcon
+} from '../components/icons';
 import CollapsibleSection from '../components/common/CollapsibleSection';
 import { exportToCsv } from '../utils/exportUtils';
 import { useSettings } from '../contexts/SettingsContext';
-import { SparklesIcon } from '../components/icons/AiIcons';
 import Modal from '../components/common/Modal';
 import { convertPdfToText } from '../utils/pdfUtils';
 import * as aiService from '../services/aiService.ts';
 import { generateId } from '../utils/idGenerator';
 import { generateAllTenantsPdf } from '../services/pdfService';
-import { PhoneIcon, EnvelopeIcon } from '../components/icons/ContactIcons';
 
 const AllTenantsPage: React.FC = () => {
     const [tenants, setTenants] = useState<TenantWithContext[]>([]);
@@ -41,13 +50,13 @@ const AllTenantsPage: React.FC = () => {
     const currency = settings.currencySymbol || '₪';
 
     const getLeaseStatus = (endDate?: string) => {
-        if (!endDate) return { label: 'ללא תאריך', color: 'bg-slate-100 text-slate-600', type: 'unknown' };
+        if (!endDate) return { label: 'ללא תאריך', color: 'bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400', type: 'unknown' };
         const now = new Date();
         const end = new Date(endDate);
         const diffDays = Math.ceil((end.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-        if (diffDays < 0) return { label: 'פג תוקף', color: 'bg-red-100 text-red-800 border border-red-200', type: 'expired' };
-        if (diffDays <= 30) return { label: `מסתיים בקרוב (${diffDays} ימים)`, color: 'bg-amber-100 text-amber-800 border border-amber-200', type: 'expiring' };
-        return { label: 'פעיל', color: 'bg-emerald-100 text-emerald-800 border border-emerald-200', type: 'active' };
+        if (diffDays < 0) return { label: 'פג תוקף', color: 'bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-200/60 dark:border-rose-900/40', type: 'expired' };
+        if (diffDays <= 30) return { label: `מסתיים בקרוב (${diffDays} ימים)`, color: 'bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-200/60 dark:border-amber-900/40', type: 'expiring' };
+        return { label: 'פעיל', color: 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-900/40', type: 'active' };
     };
 
 
@@ -383,67 +392,72 @@ const AllTenantsPage: React.FC = () => {
             )}
             <input type="file" ref={fileInputRef} onChange={handleFileChange} accept="application/pdf,text/csv" className="hidden" />
 
-            {/* Header & Controls */}
-            <div className="bg-white border border-slate-200/90 rounded-3xl p-5 sm:p-6 shadow-xs flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            {/* 1. Page Header Banner */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 rounded-2xl bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 shadow-2xs">
                 <div>
-                    <h1 className="text-xl sm:text-2xl font-black text-slate-800 tracking-tight flex items-center gap-2">
+                    <h1 className="text-xl font-bold text-neutral-900 dark:text-neutral-100 flex items-center gap-2">
+                        <UserGroupIcon className="w-6 h-6" />
                         ספר דיירים
-                        <span className="text-xs bg-sky-50 text-sky-800 border border-sky-100 px-2.5 py-0.5 rounded-full font-bold">
+                        <span className="text-xs bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200/60 dark:border-blue-900/40 px-2.5 py-0.5 rounded-full font-bold">
                             {tenants.length} דיירים
                         </span>
                     </h1>
-                    <p className="text-xs text-slate-500 mt-0.5">ניהול חוזי שכירות, דמי שכירות, אנשי קשר ותקשורת WhatsApp</p>
+                    <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
+                        ניהול חוזי שכירות, דמי שכירות, אנשי קשר ותקשורת WhatsApp.
+                    </p>
                 </div>
-                <div className="flex items-center gap-2 flex-wrap w-full md:w-auto justify-between md:justify-end">
+                <div className="flex items-center gap-2 flex-wrap w-full sm:w-auto justify-between sm:justify-end">
                     <div className="flex items-center gap-2 flex-wrap">
-                        <button onClick={handleExportPdf} className="btn-secondary text-xs py-2 px-3 flex items-center gap-1.5"><ArrowDownTrayIcon className="w-4 h-4" /> PDF {isEditMode && selectedCount > 0 && `(${selectedCount})`}</button>
-                        <button onClick={handleExportCsv} className="btn-secondary text-xs py-2 px-3 flex items-center gap-1.5"><ArrowDownTrayIcon className="w-4 h-4" /> Excel {isEditMode && selectedCount > 0 && `(${selectedCount})`}</button>
-                        <button onClick={handleAiImport} className="bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200/80 font-bold py-2 px-3 rounded-xl shadow-2xs flex items-center gap-1.5 transition-colors text-xs">
-                            <SparklesIcon className="w-4 h-4 text-purple-600" /> יבא (AI)
+                        <button onClick={handleExportPdf} className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-xl transition border border-neutral-200 dark:border-neutral-800 shadow-2xs">
+                            <ArrowDownTrayIcon className="w-4 h-4" /> PDF {isEditMode && selectedCount > 0 && `(${selectedCount})`}
+                        </button>
+                        <button onClick={handleExportCsv} className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-xl transition border border-neutral-200 dark:border-neutral-800 shadow-2xs">
+                            <ArrowDownTrayIcon className="w-4 h-4" /> Excel {isEditMode && selectedCount > 0 && `(${selectedCount})`}
+                        </button>
+                        <button onClick={handleAiImport} className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-950/60 border border-purple-200/60 dark:border-purple-900/40 rounded-xl hover:bg-purple-100 dark:hover:bg-purple-900/60 transition shadow-2xs active:scale-95">
+                            <SparklesIcon className="w-4 h-4 text-purple-600 dark:text-purple-400" /> יבא (AI)
                         </button>
                     </div>
                     <div className="flex items-center gap-2">
-                        <button onClick={() => setIsEditMode(!isEditMode)} className={`btn-secondary text-xs py-2.5 px-3 flex items-center gap-1.5 font-bold ${isEditMode ? 'bg-sky-50 text-sky-800 border-sky-300 ring-2 ring-sky-200' : ''}`}>
-                            <PencilIcon className="w-4 h-4"/> {isEditMode ? 'סיום עריכה' : 'מצב בחירה'}
+                        <button onClick={() => setIsEditMode(!isEditMode)} className={`px-3 py-2 text-xs font-semibold rounded-xl transition border ${isEditMode ? 'bg-blue-50 text-blue-700 border-blue-300 dark:bg-blue-950/60 dark:text-blue-300' : 'text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 border-neutral-200 dark:border-neutral-800'}`}>
+                            <ClipboardDocumentCheckIcon className="w-4 h-4 inline ml-1"/> {isEditMode ? 'סיום עריכה' : 'מצב בחירה'}
                         </button>
                         <button 
                             onClick={() => openModal()}
-                            className="btn-primary text-xs font-bold py-2.5 px-4 shadow-sm flex items-center gap-1.5"
+                            className="flex items-center justify-center gap-1.5 px-4 py-2.5 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 active:scale-95 rounded-xl shadow-xs transition"
                         >
-                            <PlusIcon className="w-4 h-4" /> הוסף דייר
+                            <PlusIcon className="w-4 h-4 text-white" /> <span>הוסף דייר</span>
                         </button>
                     </div>
                 </div>
             </div>
             
-            {/* Search and Status Filters */}
-            <div className="bg-white p-5 rounded-3xl shadow-xs border border-slate-200/90 space-y-4">
-                <div className="relative">
-                    <span className="absolute inset-y-0 left-0 flex items-center pl-3.5 rtl:right-0 rtl:pl-0 rtl:pr-3.5 pointer-events-none">
-                        <MagnifyingGlassIcon className="w-4 h-4 text-slate-400" />
-                    </span>
+            {/* 2. Search and Status Filters */}
+            <div className="bg-white dark:bg-neutral-900 p-5 rounded-2xl shadow-2xs border border-neutral-200 dark:border-neutral-800 space-y-4">
+                <div className="relative max-w-md">
+                    <MagnifyingGlassIcon className="absolute top-2.5 left-3 w-4 h-4 text-neutral-400 rtl:right-3 rtl:left-auto pointer-events-none" />
                     <input
-                        type="search"
+                        type="text"
                         placeholder="חיפוש לפי שם, טלפון, דירה, מייל או איש קשר..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
-                        className="w-full pl-10 pr-4 py-2.5 rtl:pr-10 rtl:pl-4 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 transition-all"
+                        className="w-full pl-9 pr-3 rtl:pr-9 rtl:pl-3 py-2 text-xs border border-neutral-200 dark:border-neutral-800 rounded-xl bg-white dark:bg-neutral-900 text-neutral-900 dark:text-neutral-100 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
                     />
                 </div>
 
                 <div className="flex items-center gap-2 flex-wrap text-xs">
-                    <span className="font-bold text-slate-600 ml-1">סינון לפי חוזה:</span>
+                    <span className="font-bold text-neutral-700 dark:text-neutral-300 ml-1">סינון לפי חוזה:</span>
                     <button 
                         type="button" 
                         onClick={() => setLeaseFilter('all')} 
-                        className={`px-3 py-1.5 rounded-xl font-bold transition-all ${leaseFilter === 'all' ? 'bg-sky-600 text-white shadow-xs' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+                        className={`px-3 py-1.5 rounded-xl font-bold transition-all ${leaseFilter === 'all' ? 'bg-blue-600 text-white shadow-2xs' : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-neutral-700'}`}
                     >
                         הכל ({tenants.length})
                     </button>
                     <button 
                         type="button" 
                         onClick={() => setLeaseFilter('active')} 
-                        className={`px-3 py-1.5 rounded-xl font-bold transition-all ${leaseFilter === 'active' ? 'bg-emerald-600 text-white shadow-xs' : 'bg-emerald-50 text-emerald-800 hover:bg-emerald-100'}`}
+                        className={`px-3 py-1.5 rounded-xl font-bold transition-all ${leaseFilter === 'active' ? 'bg-emerald-600 text-white shadow-2xs' : 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100'}`}
                     >
                         חוזים פעילים ({tenants.filter(t => getLeaseStatus(t.leaseEndDate).type === 'active').length})
                     </button>

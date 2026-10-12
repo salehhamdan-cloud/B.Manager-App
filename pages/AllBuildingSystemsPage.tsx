@@ -4,8 +4,11 @@ import * as dbService from '../services/dbService';
 import { Project, BuildingSystemLog, BuildingSystemType } from '../types';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import { useToast } from '../contexts/ToastContext';
+import { useSettings } from '../contexts/SettingsContext';
 import { formatDate } from '../utils/dateFormatter';
-import { PlusIcon, PencilIcon, TrashIcon, MagnifyingGlassIcon, ArrowDownTrayIcon } from '../components/icons/ActionIcons';
+import { exportToExcel } from '../utils/exportUtils';
+import { generateAllBuildingSystemsPdf } from '../services/pdfService';
+import { PlusIcon, PencilIcon, TrashIcon, MagnifyingGlassIcon, ArrowDownTrayIcon, PrinterIcon } from '../components/icons/ActionIcons';
 import Modal from '../components/common/Modal';
 import UniversalFileViewerModal from '../components/common/UniversalFileViewerModal';
 import { generateId } from '../utils/idGenerator';
@@ -37,6 +40,8 @@ export const AllBuildingSystemsPage: React.FC = () => {
     const [buildingFilter, setBuildingFilter] = useState('all');
     const [typeFilter, setTypeFilter] = useState<string>('all');
     const [statusFilter, setStatusFilter] = useState<string>('all');
+    const [urgencyFilter, setUrgencyFilter] = useState<'all' | 'overdue' | 'dueSoon' | 'ok'>('all');
+    const [sortBy, setSortBy] = useState<'nextInspection_asc' | 'nextInspection_desc' | 'lastInspection_desc' | 'title_asc' | 'building_asc' | 'urgency'>('nextInspection_asc');
     
     // Modal states
     const [isAddEditModalOpen, setIsAddEditModalOpen] = useState(false);
@@ -45,6 +50,7 @@ export const AllBuildingSystemsPage: React.FC = () => {
     const [viewingCert, setViewingCert] = useState<{ name: string; url?: string; dataUrl?: string } | null>(null);
 
     const { addToast } = useToast();
+    const { settings } = useSettings();
 
     const fetchData = useCallback(async () => {
         setIsLoading(true);
@@ -175,11 +181,27 @@ export const AllBuildingSystemsPage: React.FC = () => {
 
     // Filtered systems
     const filteredSystems = useMemo(() => {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
         return systems.filter(sys => {
             const matchesBuilding = buildingFilter === 'all' || sys.buildingId === buildingFilter;
             const matchesType = typeFilter === 'all' || sys.systemType === typeFilter;
             const matchesStatus = statusFilter === 'all' || sys.status === statusFilter;
             
+            // Urgency Filter
+            if (urgencyFilter !== 'all') {
+                if (!sys.nextInspectionDate) {
+                    if (urgencyFilter !== 'ok') return false;
+                } else {
+                    const next = new Date(sys.nextInspectionDate);
+                    const diffDays = Math.ceil((next.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+                    if (urgencyFilter === 'overdue' && next >= today) return false;
+                    if (urgencyFilter === 'dueSoon' && (diffDays < 0 || diffDays > 30)) return false;
+                    if (urgencyFilter === 'ok' && diffDays <= 30) return false;
+                }
+            }
+
             const bName = projects.find(p => p.id === sys.buildingId)?.name || '';
             const searchLower = searchTerm.toLowerCase();
             const matchesSearch = !searchTerm || 
@@ -189,8 +211,97 @@ export const AllBuildingSystemsPage: React.FC = () => {
                 bName.toLowerCase().includes(searchLower);
 
             return matchesBuilding && matchesType && matchesStatus && matchesSearch;
+        }).sort((a, b) => {
+            if (sortBy === 'nextInspection_asc') {
+                const dateA = a.nextInspectionDate ? new Date(a.nextInspectionDate).getTime() : Infinity;
+                const dateB = b.nextInspectionDate ? new Date(b.nextInspectionDate).getTime() : Infinity;
+                return dateA - dateB;
+            }
+            if (sortBy === 'nextInspection_desc') {
+                const dateA = a.nextInspectionDate ? new Date(a.nextInspectionDate).getTime() : -Infinity;
+                const dateB = b.nextInspectionDate ? new Date(b.nextInspectionDate).getTime() : -Infinity;
+                return dateB - dateA;
+            }
+            if (sortBy === 'lastInspection_desc') {
+                const dateA = a.lastInspectionDate ? new Date(a.lastInspectionDate).getTime() : -Infinity;
+                const dateB = b.lastInspectionDate ? new Date(b.lastInspectionDate).getTime() : -Infinity;
+                return dateB - dateA;
+            }
+            if (sortBy === 'title_asc') {
+                return (a.title || '').localeCompare(b.title || '', 'he');
+            }
+            if (sortBy === 'building_asc') {
+                const bA = projects.find(p => p.id === a.buildingId)?.name || '';
+                const bB = projects.find(p => p.id === b.buildingId)?.name || '';
+                return bA.localeCompare(bB, 'he');
+            }
+            if (sortBy === 'urgency') {
+                const todayMs = new Date().getTime();
+                const score = (log: BuildingSystemLog) => {
+                    let s = 0;
+                    if (log.status === 'תקול' || log.status === 'מושבת') s += 100;
+                    if (log.status === 'דורש בדיקה') s += 50;
+                    if (log.nextInspectionDate) {
+                        const ms = new Date(log.nextInspectionDate).getTime();
+                        if (ms < todayMs) s += 80;
+                        else if (ms < todayMs + 30 * 86400000) s += 40;
+                    }
+                    return s;
+                };
+                return score(b) - score(a);
+            }
+            return 0;
         });
-    }, [systems, projects, buildingFilter, typeFilter, statusFilter, searchTerm]);
+    }, [systems, projects, buildingFilter, typeFilter, statusFilter, urgencyFilter, searchTerm, sortBy]);
+
+    // Export to Excel
+    const handleExportExcel = () => {
+        if (filteredSystems.length === 0) {
+            addToast('אין מערכות לייצוא', 'warning');
+            return;
+        }
+
+        const projectMap = new Map<string, string>();
+        projects.forEach(p => projectMap.set(p.id, p.name));
+
+        const dataToExport = filteredSystems.map(s => {
+            const cfg = SYSTEM_TYPE_CONFIG[s.systemType] || SYSTEM_TYPE_CONFIG.other;
+            return {
+                'בניין': projectMap.get(s.buildingId) || 'כללי',
+                'שם המערכת': s.title,
+                'סוג מערכת': cfg.label,
+                'סטטוס': s.status,
+                'תאריך בדיקה אחרונה': s.lastInspectionDate ? formatDate(s.lastInspectionDate) : '-',
+                'תאריך ביקורת הבאה': s.nextInspectionDate ? formatDate(s.nextInspectionDate) : '-',
+                'טכנאי / חברה': s.technicianName || '-',
+                'טלפון טכנאי': s.technicianPhone || '-',
+                'הערות': s.notes || '-',
+            };
+        });
+
+        exportToExcel(dataToExport, 'all_building_systems', 'מערכות כל המבנים');
+        addToast('קובץ Excel יוצא בהצלחה!', 'success');
+    };
+
+    // Export to PDF
+    const handleExportPdf = async () => {
+        if (filteredSystems.length === 0) {
+            addToast('אין מערכות לייצוא', 'warning');
+            return;
+        }
+        addToast('יוצר קובץ PDF...', 'info');
+        try {
+            await generateAllBuildingSystemsPdf({
+                settings,
+                projects,
+                systemLogs: filteredSystems,
+            });
+            addToast('קובץ ה-PDF נוצר בהצלחה!', 'success');
+        } catch (error) {
+            console.error('Error generating PDF:', error);
+            addToast('שגיאה ביצירת קובץ PDF', 'error');
+        }
+    };
 
     // KPI stats
     const stats = useMemo(() => {
@@ -238,12 +349,28 @@ export const AllBuildingSystemsPage: React.FC = () => {
                     </div>
                 </div>
 
-                <div className="flex items-center gap-2 w-full sm:w-auto">
+                <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto justify-end">
+                    <button
+                        onClick={handleExportExcel}
+                        className="btn-secondary py-2.5 px-3.5 text-xs font-bold flex items-center justify-center gap-1.5 rounded-xl shadow-xs hover:bg-neutral-100"
+                        title="ייצוא לאקסל (.xlsx) עם תמיכה מלאה בעברית"
+                    >
+                        <ArrowDownTrayIcon className="w-4 h-4 text-emerald-600" />
+                        <span>ייצוא לאקסל</span>
+                    </button>
+                    <button
+                        onClick={handleExportPdf}
+                        className="btn-secondary py-2.5 px-3.5 text-xs font-bold flex items-center justify-center gap-1.5 rounded-xl shadow-xs hover:bg-neutral-100"
+                        title="ייצוא קובץ PDF מעוצב"
+                    >
+                        <PrinterIcon className="w-4 h-4 text-rose-600" />
+                        <span>ייצוא PDF</span>
+                    </button>
                     <button
                         onClick={handleOpenAdd}
-                        className="btn-primary py-2.5 px-4 text-sm font-bold flex items-center justify-center gap-2 flex-grow sm:flex-grow-0 rounded-xl shadow-xs"
+                        className="btn-primary py-2.5 px-4 text-xs font-bold flex items-center justify-center gap-1.5 rounded-xl shadow-xs"
                     >
-                        <PlusIcon className="w-5 h-5" />
+                        <PlusIcon className="w-4 h-4" />
                         <span>מערכת חדשה</span>
                     </button>
                 </div>
@@ -275,7 +402,7 @@ export const AllBuildingSystemsPage: React.FC = () => {
 
             {/* Filter & Search Bar */}
             <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs space-y-3">
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-2.5">
                     {/* Search */}
                     <div className="relative">
                         <input
@@ -283,7 +410,7 @@ export const AllBuildingSystemsPage: React.FC = () => {
                             value={searchTerm}
                             onChange={e => setSearchTerm(e.target.value)}
                             placeholder="חיפוש מערכת, טכנאי או הערות..."
-                            className="w-full pl-9 pr-3 py-2 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-sky-500 focus:outline-hidden"
+                            className="w-full pl-9 pr-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-sky-500 focus:outline-hidden"
                         />
                         <MagnifyingGlassIcon className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
                     </div>
@@ -292,7 +419,7 @@ export const AllBuildingSystemsPage: React.FC = () => {
                     <select
                         value={buildingFilter}
                         onChange={e => setBuildingFilter(e.target.value)}
-                        className="w-full px-3 py-2 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-sky-500 focus:outline-hidden bg-white"
+                        className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-sky-500 focus:outline-hidden bg-white"
                     >
                         <option value="all">כל המבנים</option>
                         {projects.map(p => (
@@ -304,7 +431,7 @@ export const AllBuildingSystemsPage: React.FC = () => {
                     <select
                         value={typeFilter}
                         onChange={e => setTypeFilter(e.target.value)}
-                        className="w-full px-3 py-2 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-sky-500 focus:outline-hidden bg-white"
+                        className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-sky-500 focus:outline-hidden bg-white"
                     >
                         <option value="all">כל סוגי המערכות</option>
                         {Object.entries(SYSTEM_TYPE_CONFIG).map(([key, cfg]) => (
@@ -316,7 +443,7 @@ export const AllBuildingSystemsPage: React.FC = () => {
                     <select
                         value={statusFilter}
                         onChange={e => setStatusFilter(e.target.value)}
-                        className="w-full px-3 py-2 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-sky-500 focus:outline-hidden bg-white"
+                        className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-sky-500 focus:outline-hidden bg-white"
                     >
                         <option value="all">כל הסטטוסים</option>
                         <option value="תקין">תקין</option>
@@ -324,7 +451,54 @@ export const AllBuildingSystemsPage: React.FC = () => {
                         <option value="תקול">תקול</option>
                         <option value="מושבת">מושבת</option>
                     </select>
+
+                    {/* Urgency Filter */}
+                    <select
+                        value={urgencyFilter}
+                        onChange={e => setUrgencyFilter(e.target.value as any)}
+                        className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-sky-500 focus:outline-hidden bg-white"
+                    >
+                        <option value="all">מועדי בדיקה: הכל</option>
+                        <option value="overdue">🚨 באיחור בדיקה</option>
+                        <option value="dueSoon">⏳ לבדיקה ב-30 יום</option>
+                        <option value="ok">✅ בדיקה תקינה ועתידית</option>
+                    </select>
+
+                    {/* Sort Dropdown */}
+                    <select
+                        value={sortBy}
+                        onChange={e => setSortBy(e.target.value as any)}
+                        className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-sky-500 focus:outline-hidden bg-white"
+                    >
+                        <option value="nextInspection_asc">מיון: בדיקה הבאה (מהקרוב לרחוק)</option>
+                        <option value="nextInspection_desc">מיון: בדיקה הבאה (מהרחוק לקרוב)</option>
+                        <option value="lastInspection_desc">מיון: בדיקה אחרונה (מהחדש לישן)</option>
+                        <option value="title_asc">מיון: שם המערכת (א-ת)</option>
+                        <option value="building_asc">מיון: שם הבניין (א-ת)</option>
+                        <option value="urgency">מיון: לפי דחיפות וליקויים</option>
+                    </select>
                 </div>
+
+                {/* Reset filters bar */}
+                {(searchTerm || buildingFilter !== 'all' || typeFilter !== 'all' || statusFilter !== 'all' || urgencyFilter !== 'all') && (
+                    <div className="flex items-center justify-between text-xs pt-1 border-t border-slate-100">
+                        <span className="text-slate-500">
+                            מציג {filteredSystems.length} מתוך {systems.length} מערכות
+                        </span>
+                        <button
+                            onClick={() => {
+                                setSearchTerm('');
+                                setBuildingFilter('all');
+                                setTypeFilter('all');
+                                setStatusFilter('all');
+                                setUrgencyFilter('all');
+                            }}
+                            className="text-sky-600 hover:underline font-semibold"
+                        >
+                            איפוס כל המסננים
+                        </button>
+                    </div>
+                )}
             </div>
 
             {/* Systems Grid */}

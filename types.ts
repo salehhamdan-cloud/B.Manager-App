@@ -517,7 +517,11 @@ export interface AppSettings {
     language?: 'he' | 'en' | 'ar';
     themeMode?: 'system' | 'light' | 'dark';
     colorPalette?: 'default' | 'emerald' | 'indigo' | 'sunset' | 'slate' | 'warm-forest';
+    geminiModel?: GeminiModelVersion;
 }
+
+export type GeminiModelVersion = 'gemini-3.8-flash' | 'gemini-3.1-pro-preview' | 'gemini-3.1-flash-lite' | 'gemini-flash-latest';
+
 export interface Quotation {
     id: string;
     projectId: string;

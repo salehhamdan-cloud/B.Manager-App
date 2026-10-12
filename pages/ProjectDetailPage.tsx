@@ -8,22 +8,32 @@ import Modal from '../components/common/Modal';
 import { generateId } from '../utils/idGenerator';
 import { useToast } from '../contexts/ToastContext';
 import { formatDate, formatDateTime } from '../utils/dateFormatter';
-import { PlusIcon, PencilIcon, ArrowUpTrayIcon, ClipboardCheckIcon } from '../components/icons/ActionIcons';
-import { DocumentScannerIcon } from '../components/icons/ScannerIcons';
-import { DocumentChartBarIcon, FolderIcon, QueueListIcon, ClipboardDocumentListIcon, ChatBubbleBottomCenterTextIcon, WrenchScrewdriverIcon, RectangleGroupIcon } from '../components/icons/NavigationIcons';
+import {
+  PencilIcon,
+  ClipboardCheckIcon,
+  ArrowUpTrayIcon,
+  WrenchScrewdriverIcon,
+  DocumentChartBarIcon,
+  SparklesIcon,
+  ClipboardDocumentListIcon,
+  UserGroupIcon,
+  IdentificationIcon,
+  ChatBubbleBottomCenterTextIcon,
+  RectangleGroupIcon,
+  FolderIcon,
+  QueueListIcon,
+  ArchiveBoxIcon,
+} from '../components/icons';
 import ImageUploader from '../components/common/ImageUploader';
 import { convertPdfToImages, convertPdfToText } from '../utils/pdfUtils';
 import BuildingDashboard from '../components/ProjectDashboard';
 import NavigationCard from '../components/common/NavigationCard';
 import AddFileModal from '../components/common/AddFileModal';
 import AddTodoModal from '../components/common/AddTodoModal';
-import { SparklesIcon } from '../components/icons/AiIcons';
 import * as aiService from '../services/aiService.ts';
-import { UserGroupIcon, IdentificationIcon } from '../components/icons/UserIcons';
 import { useSettings } from '../contexts/SettingsContext';
+import { useTranslation } from '../src/i18n';
 import * as emailService from '../services/emailService';
-import { ArchiveBoxIcon } from '../components/icons/GeneralIcons';
-import { BuildingSystemsSection } from '../components/BuildingSystemsSection';
 
 const getInitials = (name: string): string => {
   if (!name) return '';
@@ -37,6 +47,7 @@ const getInitials = (name: string): string => {
 
 const BuildingDetailPage: React.FC = () => {
   const { projectId } = useParams<{ projectId: string }>();
+  const { t } = useTranslation();
   const [project, setProject] = useState<Project | null>(null);
   const [reports, setReports] = useState<Report[]>([]);
   const [allProblems, setAllProblems] = useState<Problem[]>([]);
@@ -400,8 +411,8 @@ const BuildingDetailPage: React.FC = () => {
     return project?.inventory?.some(l => l.itemGroups.some(g => g.name === 'כלי עבודה חשמליים'));
   }, [project]);
 
-  if (isLoading) return <LoadingSpinner text="טוען פרטי בניין..." />;
-  if (!project) return <div className="text-center py-10 text-slate-500 text-lg">בניין לא נמצא.</div>;
+  if (isLoading) return <LoadingSpinner text={t('loadingBuildingDetails', 'טוען פרטי בניין...')} />;
+  if (!project) return <div className="text-center py-10 text-neutral-500 text-lg">{t('buildingNotFound', 'בניין לא נמצא.')}</div>;
   
   const hasMainImage = project.images.length > 0;
   const projectMainImage = hasMainImage ? (project.images[0].url || project.images[0].dataUrl) : '';
@@ -421,68 +432,68 @@ const BuildingDetailPage: React.FC = () => {
     <div className="space-y-8">
       {isAiProcessing && (
           <div className="fixed inset-0 bg-slate-900 bg-opacity-60 backdrop-blur-sm flex flex-col items-center justify-center z-[1001]">
-              <LoadingSpinner text="מנתח קובץ בעזרת AI..."/>
-              <p className="text-white/80 text-sm mt-2">תהליך זה עשוי לקחת כדקה.</p>
+              <LoadingSpinner text={t('analyzingAi', 'מנתח קובץ בעזרת AI...')}/>
+              <p className="text-white/80 text-sm mt-2">{t('analyzingAiDesc', 'תהליך זה עשוי לקחת כדקה.')}</p>
           </div>
       )}
-      <section className="bg-white shadow-xs border border-slate-200/90 rounded-3xl p-6 sm:p-8">
+      <section className="bg-white dark:bg-neutral-900 shadow-2xs border border-neutral-200 dark:border-neutral-800 rounded-2xl p-6 sm:p-8">
         <div className="flex flex-col md:flex-row md:items-start gap-6">
           {hasMainImage && projectMainImage ? (
-            <img src={projectMainImage} alt={`תמונת בניין ${project.name}`} className="w-full md:w-1/3 h-56 sm:h-64 object-cover rounded-2xl shadow-xs border border-slate-100"/>
+            <img src={projectMainImage} alt={`תמונת בניין ${project.name}`} className="w-full md:w-1/3 h-56 sm:h-64 object-cover rounded-2xl shadow-2xs border border-neutral-200 dark:border-neutral-800"/>
           ) : (
-            <div className="w-full md:w-1/3 h-56 sm:h-64 bg-gradient-to-tr from-sky-900 via-slate-800 to-indigo-950 rounded-2xl shadow-xs border border-slate-200/50 flex flex-col items-center justify-center p-4 text-center">
+            <div className="w-full md:w-1/3 h-56 sm:h-64 bg-gradient-to-tr from-blue-900 via-neutral-800 to-indigo-950 rounded-2xl shadow-2xs border border-neutral-200/50 dark:border-neutral-800 flex flex-col items-center justify-center p-4 text-center">
                 <span className="text-5xl font-black text-white/90 tracking-wider mb-2">{getInitials(project.name)}</span>
-                <span className="text-xs text-sky-200/80 font-medium">B.Manager נכס</span>
+                <span className="text-xs text-blue-200/80 font-medium">B.Manager {t('buildingDetail', 'נכס')}</span>
             </div>
           )}
           <div className="flex-grow">
             <div className="flex justify-between items-start mb-2">
               <div>
-                <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">{project.name}</h1>
-                <p className="text-xs sm:text-sm text-slate-500 mt-1">{project.address || 'כתובת טרם הוגדרה'}</p>
+                <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-neutral-900 dark:text-neutral-100">{project.name}</h1>
+                <p className="text-xs sm:text-sm text-neutral-500 dark:text-neutral-400 mt-1">{project.address || t('addressNotSet', 'כתובת טרם הוגדרה')}</p>
               </div>
-              <button onClick={() => { setCurrentProjectData({...project}); setIsEditProjectModalOpen(true); }} className="p-2.5 text-slate-500 hover:text-sky-700 hover:bg-sky-50 transition-colors rounded-2xl border border-slate-200/80 shadow-2xs" title="ערוך פרטי בניין">
+              <button onClick={() => { setCurrentProjectData({...project}); setIsEditProjectModalOpen(true); }} className="p-2.5 text-neutral-500 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/50 transition-colors rounded-xl border border-neutral-200 dark:border-neutral-800 shadow-2xs" title={t('editBuilding', 'ערוך פרטי בניין')}>
                 <PencilIcon className="w-5 h-5" />
               </button>
             </div>
 
             {project.clientInfo && (
-                <p className="text-xs sm:text-sm text-slate-600 mb-2"><strong className="text-slate-700 font-bold">לקוח:</strong> {project.clientInfo}</p>
+                <p className="text-xs sm:text-sm text-neutral-600 dark:text-neutral-300 mb-2"><strong className="text-neutral-800 dark:text-neutral-100 font-bold">{t('client', 'לקוח')}:</strong> {project.clientInfo}</p>
             )}
 
             {project.managerName && (
-                <div className="mt-3 pt-3 border-t border-slate-100 flex flex-wrap items-center gap-4 text-xs sm:text-sm text-slate-600">
-                    <div><span className="text-slate-400 font-medium">מנהל בניין:</span> <strong className="text-slate-800">{project.managerName}</strong></div>
-                    {project.managerPhone && <div><span className="text-slate-400 font-medium">טלפון:</span> <a href={`tel:${project.managerPhone}`} className="text-sky-600 font-bold hover:underline">{project.managerPhone}</a></div>}
-                    {project.managerEmail && <div><span className="text-slate-400 font-medium">אימייל:</span> <a href={`mailto:${project.managerEmail}`} className="text-sky-600 font-bold hover:underline">{project.managerEmail}</a></div>}
+                <div className="mt-3 pt-3 border-t border-neutral-100 dark:border-neutral-800 flex flex-wrap items-center gap-4 text-xs sm:text-sm text-neutral-600 dark:text-neutral-300">
+                    <div><span className="text-neutral-400 dark:text-neutral-500 font-medium">{t('buildingManager', 'מנהל בניין')}:</span> <strong className="text-neutral-800 dark:text-neutral-100">{project.managerName}</strong></div>
+                    {project.managerPhone && <div><span className="text-neutral-400 dark:text-neutral-500 font-medium">{t('phone', 'טלפון')}:</span> <a href={`tel:${project.managerPhone}`} className="text-blue-600 dark:text-blue-400 font-bold hover:underline font-mono">{project.managerPhone}</a></div>}
+                    {project.managerEmail && <div><span className="text-neutral-400 dark:text-neutral-500 font-medium">{t('email', 'אימייל')}:</span> <a href={`mailto:${project.managerEmail}`} className="text-blue-600 dark:text-blue-400 font-bold hover:underline">{project.managerEmail}</a></div>}
                 </div>
             )}
 
-            <div className="mt-4 grid grid-cols-3 gap-3 text-center bg-slate-50/70 p-3 rounded-2xl border border-slate-100">
+            <div className="mt-4 grid grid-cols-3 gap-3 text-center bg-neutral-50 dark:bg-neutral-800/50 p-3 rounded-2xl border border-neutral-100 dark:border-neutral-800">
                 <div>
-                    <p className="text-[11px] font-bold text-slate-500">קומות</p>
-                    <p className="text-slate-800 text-lg font-black font-mono-numbers">{project.numberOfFloors ?? '-'}</p>
+                    <p className="text-[11px] font-bold text-neutral-500 dark:text-neutral-400">{t('floors', 'קומות')}</p>
+                    <p className="text-neutral-800 dark:text-neutral-100 text-lg font-bold font-mono">{project.numberOfFloors ?? '-'}</p>
                 </div>
                 <div>
-                    <p className="text-[11px] font-bold text-slate-500">שטח (מ"ר)</p>
-                    <p className="text-slate-800 text-lg font-black font-mono-numbers">{project.buildingArea ?? '-'}</p>
+                    <p className="text-[11px] font-bold text-neutral-500 dark:text-neutral-400">{t('buildingArea', 'שטח (מ"ר)')}</p>
+                    <p className="text-neutral-800 dark:text-neutral-100 text-lg font-bold font-mono">{project.buildingArea ?? '-'}</p>
                 </div>
                 <div>
-                    <p className="text-[11px] font-bold text-slate-500">חניות</p>
-                    <p className="text-slate-800 text-lg font-black font-mono-numbers">{project.parkingSpots ?? '-'}</p>
+                    <p className="text-[11px] font-bold text-neutral-500 dark:text-neutral-400">{t('parkingSpots', 'חניות')}</p>
+                    <p className="text-neutral-800 dark:text-neutral-100 text-lg font-bold font-mono">{project.parkingSpots ?? '-'}</p>
                 </div>
             </div>
 
-            <p className="text-[11px] text-slate-400 mt-3">נוצר ב: {formatDateTime(project.createdAt)} | עודכן לאחרונה: {formatDateTime(project.updatedAt)}</p>
+            <p className="text-[11px] text-neutral-400 dark:text-neutral-500 mt-3 font-mono">{t('createdAt', 'נוצר ב:')} {formatDateTime(project.createdAt)} | {t('updatedAt', 'עודכן לאחרונה:')} {formatDateTime(project.updatedAt)}</p>
 
-            <div className="mt-4 pt-4 border-t border-slate-100 flex flex-wrap items-center gap-2.5">
-                <Link to={`/project/${project.id}/checklist`} className="btn-primary text-xs font-bold py-2.5 px-4 shadow-sm flex items-center">
+            <div className="mt-4 pt-4 border-t border-neutral-100 dark:border-neutral-800 flex flex-wrap items-center gap-2.5">
+                <Link to={`/project/${project.id}/checklist`} className="btn-primary text-xs font-bold py-2.5 px-4 shadow-2xs flex items-center">
                     <ClipboardCheckIcon className="w-4 h-4 me-1.5 rtl:ml-1.5" />
-                    רשימת תקלות לטיפול
+                    {t('checklistButton', 'רשימת תקלות לטיפול')}
                 </Link>
                 <button onClick={handleExportProject} className="btn-secondary text-xs font-semibold py-2.5 px-3.5 flex items-center">
                     <ArrowUpTrayIcon className="w-4 h-4 me-1.5 rtl:ml-1.5" />
-                    ייצא גיבוי
+                    {t('exportBackup', 'ייצא גיבוי')}
                 </button>
             </div>
           </div>
@@ -493,187 +504,184 @@ const BuildingDetailPage: React.FC = () => {
 
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
           <NavigationCard
+              to={`/project/${project.id}/systems`}
+              icon={<WrenchScrewdriverIcon className="w-6 h-6" />}
+              title={t('buildingSystemsCard', 'מערכות ותשתיות המבנה')}
+              count={systemLogs.length}
+          />
+          <NavigationCard
               to={`/project/${project.id}/reports`}
               icon={<DocumentChartBarIcon className="w-6 h-6" />}
-              title="דוחות"
+              title={t('reports', 'דוחות')}
               count={reports.length}
-              actionText="הוסף דוח"
+              actionText={t('addReport', 'הוסף דוח')}
               onActionClick={() => setIsReportModalOpen(true)}
-              secondaryActionText="הוסף מ-PDF (AI)"
+              secondaryActionText={t('addReportAi', 'הוסף מ-PDF (AI)')}
               onSecondaryActionClick={handleAiReportCreation}
               secondaryActionIcon={<SparklesIcon className="w-5 h-5" />}
           />
-           <NavigationCard
+          <NavigationCard
               to={`/project/${project.id}/forms`}
               icon={<ClipboardDocumentListIcon className="w-6 h-6" />}
-              title="טפסים"
+              title={t('forms', 'טפסים')}
               count={forms.length}
           />
-           <NavigationCard
+          <NavigationCard
               to={`/project/${project.id}/tenants`}
               icon={<UserGroupIcon className="w-6 h-6" />}
-              title="דיירים"
+              title={t('tenants', 'דיירים')}
               count={project.tenants?.length || 0}
-              secondaryActionText="הוסף מ-PDF/CSV (AI)"
+              secondaryActionText={t('addTenantAi', 'הוסף מ-PDF/CSV (AI)')}
               onSecondaryActionClick={handleAiTenantCreation}
               secondaryActionIcon={<SparklesIcon className="w-5 h-5" />}
           />
           <NavigationCard
               to={`/project/${project.id}/workers`}
               icon={<IdentificationIcon className="w-6 h-6" />}
-              title="עובדי תחזוקה"
+              title={t('workers', 'עובדי תחזוקה')}
               count={project.workers?.length || 0}
           />
           <NavigationCard
               to={`/project/${project.id}/notes`}
               icon={<ChatBubbleBottomCenterTextIcon className="w-6 h-6" />}
-              title="הערות ומידע"
+              title={t('notes', 'הערות ומידע')}
               count={project.notes?.length || 0}
           />
-           <NavigationCard
+          <NavigationCard
               to={`/project/${project.id}/sub-projects`}
               icon={<RectangleGroupIcon className="w-6 h-6" />}
-              title="פרויקטים"
+              title={t('projects', 'פרויקטים')}
               count={project.subProjects?.length || 0}
           />
           <NavigationCard
               to={`/project/${project.id}/files`}
               icon={<FolderIcon className="w-6 h-6" />}
-              title="קבצים"
+              title={t('files', 'קבצים')}
               count={project.files?.length || 0}
-              actionText="הוסף קובץ"
+              actionText={t('addFile', 'הוסף קובץ')}
               onActionClick={() => setIsAddFileModalOpen(true)}
           />
           <NavigationCard
               to={`/project/${project.id}/todos`}
               icon={<QueueListIcon className="w-6 h-6" />}
-              title="משימות"
+              title={t('todos', 'משימות')}
               count={project.todos?.length || 0}
-              actionText="הוסף משימה"
+              actionText={t('addTodo', 'הוסף משימה')}
               onActionClick={() => setIsAddTodoModalOpen(true)}
           />
           <NavigationCard
               to={`/project/${project.id}/inventory`}
               icon={<ArchiveBoxIcon className="w-6 h-6" />}
-              title="מלאי"
+              title={t('inventory', 'מלאי')}
               count={project.inventory?.flatMap(l => l.itemGroups).flatMap(g => g.items).length || 0}
           />
           {hasElectricalTools && (
             <NavigationCard
                 to={`/project/${project.id}/electrical-tools`}
                 icon={<WrenchScrewdriverIcon className="w-6 h-6" />}
-                title="בדיקת כלי עבודה חשמליים"
+                title={t('electricalTools', 'בדיקת כלי עבודה חשמליים')}
                 count={project.inventory?.flatMap(l => l.itemGroups).find(g => g.name === 'כלי עבודה חשמליים')?.items.length || 0}
             />
           )}
       </div>
-
-      {/* Building Systems & Infrastructure Equipment Logs (MD Section 3.2) */}
-      <section className="bg-white shadow-xs border border-slate-200/90 rounded-3xl p-6 sm:p-8">
-        <BuildingSystemsSection
-          buildingId={project.id}
-          systemLogs={systemLogs}
-          onRefresh={fetchProjectDetails}
-        />
-      </section>
       
       <input type="file" ref={reportPdfInputRef} onChange={handleReportPdfFileChange} accept="application/pdf" className="hidden" />
       <input type="file" ref={tenantFileInputRef} onChange={handleTenantFileChange} accept="application/pdf,text/csv" className="hidden" />
 
-      <Modal isOpen={isReportModalOpen} onClose={() => setIsReportModalOpen(false)} title="הוספת דוח חדש" size="lg">
+      <Modal isOpen={isReportModalOpen} onClose={() => setIsReportModalOpen(false)} title={t('newReportModalTitle', 'הוספת דוח חדש')} size="lg">
         <form onSubmit={handleSubmitNewReport} className="space-y-4">
             <div>
-                <label htmlFor="report-title" className="block text-sm font-medium text-slate-700">כותרת הדוח</label>
+                <label htmlFor="report-title" className="block text-sm font-medium text-neutral-700 dark:text-neutral-300">{t('reportTitle', 'כותרת הדוח')} *</label>
                 <input type="text" name="title" id="report-title" value={newReport.title || ''} onChange={(e) => handleInputChange(e, 'newReport')} required className="mt-1 block w-full input-class"/>
             </div>
             <div>
-                <label htmlFor="report-date" className="block text-sm font-medium text-slate-700">תאריך הדוח</label>
+                <label htmlFor="report-date" className="block text-sm font-medium text-neutral-700 dark:text-neutral-300">{t('reportDate', 'תאריך הדוח')} *</label>
                 <input type="date" name="date" id="report-date" value={newReport.date || ''} onChange={(e) => handleInputChange(e, 'newReport')} required className="mt-1 block w-full input-class"/>
             </div>
             <div>
-                <label htmlFor="report-group" className="block text-sm font-medium text-slate-700">קבוצה (אופציונלי)</label>
+                <label htmlFor="report-group" className="block text-sm font-medium text-neutral-700 dark:text-neutral-300">{t('reportGroup', 'קבוצה')} ({t('optional', 'אופציונלי')})</label>
                 <input type="text" name="group" id="report-group" value={newReport.group || ''} onChange={(e) => handleInputChange(e, 'newReport')} className="mt-1 block w-full input-class" placeholder="לדוגמה: בדיקות איטום"/>
             </div>
             <div>
-                <label htmlFor="report-description" className="block text-sm font-medium text-slate-700">תיאור (אופציונלי)</label>
+                <label htmlFor="report-description" className="block text-sm font-medium text-neutral-700 dark:text-neutral-300">{t('description', 'תיאור')} ({t('optional', 'אופציונלי')})</label>
                 <textarea name="description" id="report-description" value={newReport.description || ''} onChange={(e) => handleInputChange(e, 'newReport')} rows={4} className="mt-1 block w-full input-class"/>
             </div>
             <div>
-                <label htmlFor="report-workers" className="block text-sm font-medium text-slate-700">עובדים משויכים (אופציונלי)</label>
+                <label htmlFor="report-workers" className="block text-sm font-medium text-neutral-700 dark:text-neutral-300">{t('assignedWorkers', 'עובדים משויכים')} ({t('optional', 'אופציונלי')})</label>
                 <select multiple name="workerIds" id="report-workers" value={newReport.workerIds || []} onChange={(e) => handleInputChange(e, 'newReport')} className="mt-1 block w-full input-class h-24">
                     {(project?.workers || []).map(worker => ( <option key={worker.id} value={worker.id}>{worker.name}</option>))}
                 </select>
             </div>
              <div>
-                <label htmlFor="report-suppliers" className="block text-sm font-medium text-slate-700">ספקים משויכים (אופציונלי)</label>
+                <label htmlFor="report-suppliers" className="block text-sm font-medium text-neutral-700 dark:text-neutral-300">{t('assignedSuppliers', 'ספקים משויכים')} ({t('optional', 'אופציונלי')})</label>
                 <select multiple name="supplierIds" id="report-suppliers" value={newReport.supplierIds || []} onChange={(e) => handleInputChange(e, 'newReport')} className="mt-1 block w-full input-class h-24">
                     {allSuppliers.map(supplier => ( <option key={supplier.id} value={supplier.id}>{supplier.name} ({supplier.group})</option>))}
                 </select>
             </div>
             <div>
-                <label htmlFor="report-tenants" className="block text-sm font-medium text-slate-700">דיירים משויכים (אופציונלי)</label>
+                <label htmlFor="report-tenants" className="block text-sm font-medium text-neutral-700 dark:text-neutral-300">{t('tenants', 'דיירים משויכים')} ({t('optional', 'אופציונלי')})</label>
                 <select multiple name="tenantIds" id="report-tenants" value={newReport.tenantIds || []} onChange={(e) => handleInputChange(e, 'newReport')} className="mt-1 block w-full input-class h-24">
                     {(project?.tenants || []).map(tenant => ( <option key={tenant.id} value={tenant.id}>{tenant.name}</option>))}
                 </select>
             </div>
             <div className="flex justify-end space-x-3 rtl:space-x-reverse pt-2">
-                <button type="button" onClick={() => setIsReportModalOpen(false)} className="btn-secondary">ביטול</button>
-                <button type="submit" className="btn-primary">צור דוח</button>
+                <button type="button" onClick={() => setIsReportModalOpen(false)} className="btn-secondary">{t('cancel', 'ביטול')}</button>
+                <button type="submit" className="btn-primary">{t('save', 'צור דוח')}</button>
             </div>
         </form>
       </Modal>
 
-      <Modal isOpen={isEditProjectModalOpen} onClose={() => { setIsEditProjectModalOpen(false); }} title="עריכת פרטי בניין" size="lg">
+      <Modal isOpen={isEditProjectModalOpen} onClose={() => { setIsEditProjectModalOpen(false); }} title={t('editBuildingModalTitle', 'עריכת פרטי בניין')} size="lg">
         <form onSubmit={handleSubmitEditProject} className="space-y-6">
             <div>
-                <label htmlFor="edit-name" className="block text-sm font-medium text-slate-700">שם הבניין</label>
+                <label htmlFor="edit-name" className="block text-sm font-medium text-neutral-700 dark:text-neutral-300">{t('buildingName', 'שם הבניין')} *</label>
                 <input type="text" name="name" id="edit-name" value={currentProjectData.name || ''} onChange={(e) => handleInputChange(e, 'editProject')} required className="mt-1 block w-full input-class" />
             </div>
              <div>
-                <label htmlFor="edit-address" className="block text-sm font-medium text-slate-700">כתובת</label>
+                <label htmlFor="edit-address" className="block text-sm font-medium text-neutral-700 dark:text-neutral-300">{t('buildingAddress', 'כתובת')}</label>
                 <input type="text" name="address" id="edit-address" value={currentProjectData.address || ''} onChange={(e) => handleInputChange(e, 'editProject')} className="mt-1 block w-full input-class" />
             </div>
              <div>
-                <label htmlFor="edit-clientInfo" className="block text-sm font-medium text-slate-700">פרטי לקוח</label>
+                <label htmlFor="edit-clientInfo" className="block text-sm font-medium text-neutral-700 dark:text-neutral-300">{t('client', 'פרטי לקוח')}</label>
                 <textarea name="clientInfo" id="edit-clientInfo" value={currentProjectData.clientInfo || ''} onChange={(e) => handleInputChange(e, 'editProject')} rows={3} className="mt-1 block w-full input-class" />
             </div>
-             <div className="pt-4 border-t">
-                <h3 className="text-md font-medium text-slate-800 mb-2">פרטי מנהל בניין</h3>
+             <div className="pt-4 border-t border-neutral-100 dark:border-neutral-800">
+                <h3 className="text-md font-medium text-neutral-800 dark:text-neutral-200 mb-2">{t('buildingManager', 'פרטי מנהל בניין')}</h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                        <label htmlFor="managerName" className="block text-sm font-medium text-slate-700">שם מנהל</label>
+                        <label htmlFor="managerName" className="block text-sm font-medium text-neutral-700 dark:text-neutral-300">{t('manager', 'שם מנהל')}</label>
                         <input type="text" name="managerName" id="managerName" value={currentProjectData.managerName || ''} onChange={(e) => handleInputChange(e, 'editProject')} className="mt-1 block w-full input-class" />
                     </div>
                     <div>
-                        <label htmlFor="managerPhone" className="block text-sm font-medium text-slate-700">טלפון</label>
+                        <label htmlFor="managerPhone" className="block text-sm font-medium text-neutral-700 dark:text-neutral-300">{t('phone', 'טלפון')}</label>
                         <input type="tel" name="managerPhone" id="managerPhone" value={currentProjectData.managerPhone || ''} onChange={(e) => handleInputChange(e, 'editProject')} className="mt-1 block w-full input-class" />
                     </div>
                     <div className="sm:col-span-2">
-                        <label htmlFor="managerEmail" className="block text-sm font-medium text-slate-700">אימייל</label>
+                        <label htmlFor="managerEmail" className="block text-sm font-medium text-neutral-700 dark:text-neutral-300">{t('email', 'אימייל')}</label>
                         <input type="email" name="managerEmail" id="managerEmail" value={currentProjectData.managerEmail || ''} onChange={(e) => handleInputChange(e, 'editProject')} className="mt-1 block w-full input-class" />
                     </div>
                 </div>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
-                    <label htmlFor="edit-numberOfFloors" className="block text-sm font-medium text-slate-700">כמות קומות</label>
+                    <label htmlFor="edit-numberOfFloors" className="block text-sm font-medium text-neutral-700 dark:text-neutral-300">{t('floors', 'כמות קומות')}</label>
                     <input type="number" name="numberOfFloors" id="edit-numberOfFloors" value={currentProjectData.numberOfFloors || ''} onChange={(e) => handleInputChange(e, 'editProject')} className="mt-1 block w-full input-class" />
                 </div>
                 <div>
-                    <label htmlFor="edit-buildingArea" className="block text-sm font-medium text-slate-700">שטח (מ"ר)</label>
+                    <label htmlFor="edit-buildingArea" className="block text-sm font-medium text-neutral-700 dark:text-neutral-300">{t('buildingArea', 'שטח (מ"ר)')}</label>
                     <input type="number" name="buildingArea" id="edit-buildingArea" value={currentProjectData.buildingArea || ''} onChange={(e) => handleInputChange(e, 'editProject')} className="mt-1 block w-full input-class" />
                 </div>
                 <div>
-                    <label htmlFor="edit-parkingSpots" className="block text-sm font-medium text-slate-700">חניות</label>
+                    <label htmlFor="edit-parkingSpots" className="block text-sm font-medium text-neutral-700 dark:text-neutral-300">{t('parkingSpots', 'חניות')}</label>
                     <input type="number" name="parkingSpots" id="edit-parkingSpots" value={currentProjectData.parkingSpots || ''} onChange={(e) => handleInputChange(e, 'editProject')} className="mt-1 block w-full input-class" />
                 </div>
             </div>
-            <div className="pt-4 border-t">
+            <div className="pt-4 border-t border-neutral-100 dark:border-neutral-800">
                  <ImageUploader images={imagesForUploaderEditModal} onImagesChange={handleProjectImagesChange} maxImages={5} allowNotes={false} />
             </div>
             <div className="flex justify-end gap-2 pt-4">
-                <button type="button" onClick={() => setIsEditProjectModalOpen(false)} className="btn-secondary">ביטול</button>
-                <button type="submit" className="btn-primary">שמור שינויים</button>
+                <button type="button" onClick={() => setIsEditProjectModalOpen(false)} className="btn-secondary">{t('cancel', 'ביטול')}</button>
+                <button type="submit" className="btn-primary">{t('save', 'שמור שינויים')}</button>
             </div>
         </form>
       </Modal>

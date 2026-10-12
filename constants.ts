@@ -1,10 +1,38 @@
 
 
-import { AppSettings, PdfTemplateStyle, ProblemSeverity, RecurrenceUnit, DurationUnit, QuotationStatus, PdfThemeSettings } from './types';
+import { AppSettings, PdfTemplateStyle, ProblemSeverity, RecurrenceUnit, DurationUnit, QuotationStatus, PdfThemeSettings, GeminiModelVersion } from './types';
 
 // IndexedDB Constants
 export const DB_NAME = 'BManagerDB';
 export const DB_VERSION = 2;
+
+// Gemini Model Configurations
+export const GEMINI_MODELS: { id: GeminiModelVersion; name: string; description: string; badge?: string }[] = [
+  {
+    id: 'gemini-3.8-flash',
+    name: 'Gemini 3.8 Flash',
+    description: 'הדגם המומלץ – מהיר, מדויק, תומך תמונות, קובצי PDF, Excel ו-Word בעברית, ערבית ואנגלית.',
+    badge: 'מומלץ'
+  },
+  {
+    id: 'gemini-3.1-pro-preview',
+    name: 'Gemini 3.1 Pro',
+    description: 'דגם הדגל לחשיבה מעמיקה, הסקת מסקנות וניתוח מסמכים טכניים מורכבים במיוחד.',
+    badge: 'מתקדם'
+  },
+  {
+    id: 'gemini-3.1-flash-lite',
+    name: 'Gemini 3.1 Flash Lite',
+    description: 'גרסה קלת משקל וסופר-מהירה לפעולות חילוץ נתונים ותמצות מהיר.',
+    badge: 'מהיר'
+  },
+  {
+    id: 'gemini-flash-latest',
+    name: 'Gemini Flash Latest',
+    description: 'גרסת Flash העדכנית ביותר של גוגל.',
+  },
+];
+
 
 // Object Store names
 export const OBJECT_STORE_PROJECTS = 'projects';
@@ -64,6 +92,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   language: 'he',
   themeMode: 'system',
   colorPalette: 'default',
+  geminiModel: 'gemini-3.8-flash',
 
   appTheme: {
     headerColor: '#0284c7', // sky-600

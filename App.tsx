@@ -1,22 +1,29 @@
 import React, { useState, useEffect, lazy, Suspense } from 'react';
 import { HashRouter, Routes, Route, Link, useLocation, useNavigate, Navigate } from 'react-router-dom';
 import { ToastContainer } from './components/common/Toast';
-import { HomeIcon, ArrowRightIcon, ChevronLeftIcon } from './components/icons/GeneralIcons';
+import {
+  Bars3Icon,
+  ArrowRightIcon,
+  HomeIcon,
+  MagnifyingGlassIcon,
+  BellIcon,
+  BellAlertIcon,
+  ChevronLeftIcon
+} from './components/icons';
 import BottomNavBar from './components/BottomNavBar';
 import { useSettings } from './contexts/SettingsContext';
 import { useNotifications } from './contexts/NotificationsContext';
-import { BellIcon } from './components/icons/NotificationIcons';
 import Sidebar from './components/Sidebar';
-import { Bars3Icon } from './components/icons/MenuIcons';
-import { MagnifyingGlassIcon, ArrowDownTrayIcon } from './components/icons/ActionIcons';
 import GlobalSearchModal from './components/common/GlobalSearchModal';
 import * as dbService from './services/dbService';
 import LoadingSpinner from './components/common/LoadingSpinner';
 import PendingSyncIndicator from './components/header/PendingSyncIndicator';
+import { useTranslation } from './src/i18n';
 
 // Lazy load pages for better initial load performance
 const BuildingsListPage = lazy(() => import('./pages/ProjectsListPage'));
 const BuildingDetailPage = lazy(() => import('./pages/ProjectDetailPage'));
+const ProjectSystemsPage = lazy(() => import('./pages/ProjectSystemsPage'));
 const ReportDetailPage = lazy(() => import('./pages/ReportDetailPage'));
 const ProblemEditorPage = lazy(() => import('./pages/ProblemEditorPage'));
 const SettingsPage = lazy(() => import('./pages/SettingsPage'));
@@ -68,6 +75,8 @@ const MainLayout: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { settings } = useSettings();
+  const { t, isRtl } = useTranslation();
+  const isRTL = isRtl;
   const { unreadCount } = useNotifications();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -117,39 +126,42 @@ const MainLayout: React.FC = () => {
         let currentPath = '';
 
         const staticLabels: Record<string, string> = {
-            'dashboard': 'Dashboard',
-            'settings': 'הגדרות',
-            'about': 'אודות',
-            'notifications': 'יומן פעילות',
-            'form-templates': 'תבניות טפסים',
-            'all-reports': 'כל הדוחות וסקרי המבנה',
-            'all-building-systems': 'מערכות תשתית ובטיחות',
-            'building-systems': 'מערכות תשתית ובטיחות',
-            'systems': 'מערכות תשתית ובטיחות',
-            'all-forms': 'כל הטפסים והסקרים',
-            'all-files': 'כל הקבצים',
-            'all-todos': 'כל המשימות',
-            'all-problems-checklist': 'רשימת תקלות כללית',
-            'suppliers': 'ספקים',
-            'all-tenants': 'כל הדיירים',
-            'all-workers': 'כל עובדי התחזוקה',
-            'quotations': 'הצעות מחיר',
-            'all-inventory': 'מלאי כללי',
-            'calculator': 'מחשבון',
-            'checklist': 'רשימת תקלות',
-            'reports': 'דוחות',
-            'files': 'קבצים',
-            'todos': 'משימות',
-            'forms': 'טפסים',
-            'tenants': 'דיירים',
-            'workers': 'עובדי תחזוקה',
-            'inventory': 'מלאי',
-            'problems': 'תקלות',
-            'notes': 'הערות ומידע',
-            'order-list': 'פריטים להזמנה',
-            'electrical-tools': 'כלי עבודה חשמליים',
-            'sub-projects': 'פרויקטים',
-            'all-sub-projects': 'כל פרויקטי המשנה',
+            'dashboard': t('pageTitleDashboard', 'Dashboard'),
+            'settings': t('pageTitleSettings', 'הגדרות'),
+            'about': t('pageTitleAbout', 'אודות'),
+            'notifications': t('pageTitleNotifications', 'יומן פעילות'),
+            'form-templates': t('pageTitleFormTemplates', 'תבניות טפסים'),
+            'all-reports': t('pageTitleAllReports', 'כל הדוחות וסקרי המבנה'),
+            'all-building-systems': t('pageTitleBuildingSystems', 'מערכות תשתית ובטיחות'),
+            'building-systems': t('pageTitleBuildingSystems', 'מערכות תשתית ובטיחות'),
+            'systems': t('pageTitleBuildingSystems', 'מערכות תשתית ובטיחות'),
+            'all-forms': t('pageTitleAllForms', 'כל הטפסים והסקרים'),
+            'all-files': t('pageTitleAllFiles', 'כל הקבצים'),
+            'all-todos': t('pageTitleAllTodos', 'כל המשימות'),
+            'all-problems-checklist': t('pageTitleAllProblems', 'רשימת תקלות כללית'),
+            'suppliers': t('pageTitleSuppliers', 'ספקים'),
+            'all-tenants': t('pageTitleAllTenants', 'כל הדיירים'),
+            'all-workers': t('pageTitleAllWorkers', 'כל עובדי התחזוקה'),
+            'quotations': t('pageTitleQuotations', 'הצעות מחיר'),
+            'all-inventory': t('pageTitleAllInventory', 'מלאי כללי'),
+            'calculator': t('pageTitleCalculator', 'מחשבון'),
+            'checklist': t('checklistTitle', 'רשימת תקלות'),
+            'reports': t('reports', 'דוחות'),
+            'files': t('files', 'קבצים'),
+            'todos': t('todos', 'משימות'),
+            'forms': t('forms', 'טפסים'),
+            'tenants': t('tenants', 'דיירים'),
+            'workers': t('workers', 'עובדי תחזוקה'),
+            'inventory': t('inventory', 'מלאי'),
+            'problems': t('problems', 'תקלות'),
+            'notes': t('notes', 'הערות ומידע'),
+            'order-list': t('pageTitleOrderList', 'פריטים להזמנה'),
+            'electrical-tools': t('projectElectricalToolsTitle', 'כלי עבודה חשמליים'),
+            'sub-projects': t('projects', 'פרויקטים'),
+            'all-sub-projects': t('pageTitleAllSubProjects', 'כל פרויקטי המשנה'),
+            'calendar': t('pageTitleCalendar', 'לוח שנה ותחזוקה מונעת'),
+            'ai-smart-import': t('navSmartImport', 'ייבוא חכם ב-AI ✨'),
+            'smart-import': t('navSmartImport', 'ייבוא חכם ב-AI ✨'),
         };
 
         for (let i = 0; i < pathParts.length; i++) {
@@ -221,99 +233,170 @@ const MainLayout: React.FC = () => {
     } else {
         setBreadcrumbs([]);
     }
-}, [location.pathname, isTrulyHome]);
+  }, [location.pathname, isTrulyHome, settings.language]);
 
 
   const getPageTitle = (): string => {
-    // New, more specific routes must be checked before general ones
-    if (location.pathname.match(/\/project\/[^/]+\/reports$/)) return 'דוחות הבניין';
-    if (location.pathname.match(/\/project\/[^/]+\/files$/)) return 'קבצי הבניין';
-    if (location.pathname.match(/\/project\/[^/]+\/todos$/)) return 'משימות הבניין';
-    if (location.pathname.match(/\/project\/[^/]+\/forms$/)) return 'טפסי הבניין';
-    if (location.pathname.match(/\/project\/[^/]+\/tenants$/)) return 'דיירים';
-    if (location.pathname.match(/\/project\/[^/]+\/workers$/)) return 'עובדי תחזוקה';
-    if (location.pathname.match(/\/project\/[^/]+\/inventory/)) return 'מלאי הבניין';
-    if (location.pathname.match(/\/project\/[^/]+\/notes$/)) return 'הערות ומידע';
-    if (location.pathname.match(/\/project\/[^/]+\/electrical-tools$/)) return 'כלי עבודה חשמליים';
-    if (location.pathname.match(/\/project\/[^/]+\/sub-projects$/)) return 'פרויקטים';
-    if (location.pathname.match(/\/project\/[^/]+\/sub-project\/[^/]+$/)) return 'פרטי פרויקט';
-    if (location.pathname.match(/\/report\/[^/]+\/problems$/)) return 'תקלות בדוח';
-    if (location.pathname.match(/\/report\/[^/]+\/forms$/)) return 'טפסים בדוח';
-    if (location.pathname.includes('/problem/')) return 'עריכת תקלה';
-    if (location.pathname.includes('/report/')) return 'פרטי דוח';
-    if (location.pathname.endsWith('/checklist')) return 'רשימת תקלות לטיפול';
-    if (location.pathname.startsWith('/project/')) return 'פרטי בניין';
+    // Specific project sub-routes
+    if (location.pathname.match(/\/project\/[^/]+\/systems$/)) return t('buildingSystemsPageTitle', 'מערכות ותשתיות הבניין');
+    if (location.pathname.match(/\/project\/[^/]+\/reports$/)) return t('projectReportsTitle', 'דוחות הבניין');
+    if (location.pathname.match(/\/project\/[^/]+\/files$/)) return t('projectFilesTitle', 'קבצי הבניין');
+    if (location.pathname.match(/\/project\/[^/]+\/todos$/)) return t('projectTodosTitle', 'משימות הבניין');
+    if (location.pathname.match(/\/project\/[^/]+\/forms$/)) return t('projectFormsTitle', 'טפסי הבניין');
+    if (location.pathname.match(/\/project\/[^/]+\/tenants$/)) return t('projectTenantsTitle', 'דיירים');
+    if (location.pathname.match(/\/project\/[^/]+\/workers$/)) return t('projectWorkersTitle', 'עובדי תחזוקה');
+    if (location.pathname.match(/\/project\/[^/]+\/inventory/)) return t('projectInventoryTitle', 'מלאי הבניין');
+    if (location.pathname.match(/\/project\/[^/]+\/notes$/)) return t('projectNotesTitle', 'הערות ומידע');
+    if (location.pathname.match(/\/project\/[^/]+\/electrical-tools$/)) return t('projectElectricalToolsTitle', 'כלי עבודה חשמליים');
+    if (location.pathname.match(/\/project\/[^/]+\/sub-projects$/)) return t('projectSubProjectsTitle', 'פרויקטים');
+    if (location.pathname.match(/\/project\/[^/]+\/sub-project\/[^/]+$/)) return t('subProjectDetailTitle', 'פרטי פרויקט');
+    if (location.pathname.match(/\/report\/[^/]+\/problems$/)) return t('reportProblemsTitle', 'תקלות בדוח');
+    if (location.pathname.match(/\/report\/[^/]+\/forms$/)) return t('reportFormsTitle', 'טפסים בדוח');
+    if (location.pathname.includes('/problem/')) return t('editProblemTitle', 'עריכת תקלה');
+    if (location.pathname.includes('/report/')) return t('reportDetailTitle', 'פרטי דוח');
+    if (location.pathname.endsWith('/checklist')) return t('checklistTitle', 'רשימת תקלות לטיפול');
+    if (location.pathname.startsWith('/project/')) return t('buildingDetail', 'פרטי בניין');
     
     // General routes
-    if (location.pathname === '/dashboard') return 'Dashboard';
-    if (location.pathname === '/') return 'בניינים';
-    if (location.pathname === '/settings') return 'הגדרות';
-    if (location.pathname === '/about') return 'אודות';
-    if (location.pathname === '/notifications') return 'יומן פעילות';
-    if (location.pathname === '/form-templates') return 'תבניות טפסים';
-    if (location.pathname.includes('/form/')) return 'מילוי טופס';
-    if (location.pathname === '/all-reports') return 'כל הדוחות';
-    if (location.pathname === '/all-problems-checklist') return 'רשימת תקלות כללית';
-    if (location.pathname === '/all-forms') return 'כל הטפסים';
-    if (location.pathname === '/all-files') return 'כל הקבצים';
-    if (location.pathname === '/all-todos') return 'כל המשימות';
-    if (location.pathname === '/suppliers') return 'ספקים';
-    if (location.pathname === '/all-tenants') return 'כל הדיירים';
-    if (location.pathname === '/all-workers') return 'כל עובדי התחזוקה';
-    if (location.pathname === '/quotations') return 'הצעות מחיר מאושרות';
-    if (location.pathname === '/all-inventory') return 'מלאי כללי';
-    if (location.pathname === '/order-list') return 'פריטים להזמנה';
-    if (location.pathname === '/calculator') return 'מחשבון';
-    if (location.pathname === '/all-sub-projects') return 'כל פרויקטי המשנה';
-    if (location.pathname === '/calendar') return 'לוח תחזוקה מונעת';
-    if (location.pathname === '/ai-smart-import' || location.pathname === '/smart-import') return 'ייבוא חכם ב-AI';
+    if (location.pathname === '/dashboard') return t('pageTitleDashboard', 'Dashboard');
+    if (location.pathname === '/' || location.pathname === '/projects') return t('pageTitleBuildings', 'בניינים');
+    if (location.pathname === '/settings') return t('pageTitleSettings', 'הגדרות');
+    if (location.pathname === '/about') return t('pageTitleAbout', 'אודות');
+    if (location.pathname === '/notifications') return t('pageTitleNotifications', 'יומן פעילות');
+    if (location.pathname === '/form-templates') return t('pageTitleFormTemplates', 'תבניות טפסים');
+    if (location.pathname.includes('/form/')) return t('pageTitleFillForm', 'מילוי טופס');
+    if (location.pathname === '/all-reports') return t('pageTitleAllReports', 'כל הדוחות');
+    if (location.pathname === '/all-problems-checklist') return t('pageTitleAllProblems', 'רשימת תקלות כללית');
+    if (location.pathname === '/all-building-systems' || location.pathname === '/building-systems' || location.pathname === '/systems') return t('pageTitleBuildingSystems', 'מערכות תשתית ובטיחות');
+    if (location.pathname === '/all-forms') return t('pageTitleAllForms', 'כל הטפסים');
+    if (location.pathname === '/all-files') return t('pageTitleAllFiles', 'כל הקבצים');
+    if (location.pathname === '/all-todos') return t('pageTitleAllTodos', 'כל המשימות');
+    if (location.pathname === '/suppliers') return t('pageTitleSuppliers', 'ספקים');
+    if (location.pathname === '/all-tenants') return t('pageTitleAllTenants', 'כל הדיירים');
+    if (location.pathname === '/all-workers') return t('pageTitleAllWorkers', 'כל עובדי התחזוקה');
+    if (location.pathname === '/quotations') return t('pageTitleQuotations', 'הצעות מחיר מאושרות');
+    if (location.pathname === '/all-inventory') return t('pageTitleAllInventory', 'מלאי כללי');
+    if (location.pathname === '/order-list') return t('pageTitleOrderList', 'פריטים להזמנה');
+    if (location.pathname === '/calculator') return t('pageTitleCalculator', 'מחשבון');
+    if (location.pathname === '/all-sub-projects') return t('pageTitleAllSubProjects', 'כל פרויקטי המשנה');
+    if (location.pathname === '/calendar') return t('pageTitleCalendar', 'לוח תחזוקה מונעת');
+    if (location.pathname === '/ai-smart-import' || location.pathname === '/smart-import') return t('navSmartImport', 'ייבוא חכם ב-AI');
 
-    return 'B.Manager App';
+    return t('appName', 'B.Manager App');
   };
 
+  const isCustomPalette = Boolean(settings.colorPalette && settings.colorPalette !== 'default');
+
   return (
-    <div className="min-h-screen flex flex-col bg-slate-50">
+    <div dir={isRTL ? 'rtl' : 'ltr'} className="min-h-screen flex flex-col bg-neutral-50 dark:bg-neutral-950 text-neutral-900 dark:text-neutral-100">
       {!isOnline && (
         <div className="bg-amber-500 text-white text-center p-2 font-semibold sticky top-0 z-50">
-          אתה במצב לא מקוון. שינויים יישמרו מקומית.
+          {t('offlineBanner', 'אתה במצב לא מקוון. שינויים יישמרו מקומית.')}
         </div>
       )}
-      <header style={{ backgroundColor: settings.appTheme.headerColor }} className="px-4 py-3.5 shadow-sm border-b border-white/10 sticky top-0 z-40 transition-colors backdrop-blur-md">
+      <header
+        style={isCustomPalette ? { backgroundColor: settings.appTheme.headerColor } : undefined}
+        className={`px-2.5 sm:px-4 py-2 sm:py-2.5 sticky top-0 z-40 transition-colors backdrop-blur-md shadow-xs ${
+          isCustomPalette
+            ? 'border-b border-white/10'
+            : 'bg-gradient-to-r from-sky-50/90 via-white/95 to-blue-50/90 dark:from-slate-900/95 dark:via-neutral-900/95 dark:to-slate-900/95 border-b border-sky-200/60 dark:border-slate-800'
+        }`}
+      >
         <div className="container max-w-7xl mx-auto">
-            <div className="flex justify-between items-center relative">
-            <div className="flex items-center gap-1.5">
+            <div className="flex justify-between items-center gap-1.5 sm:gap-2">
+            {/* Leading Actions: Menu, Back, Home */}
+            <div className="flex items-center gap-1 sm:gap-1.5 flex-shrink-0">
                 <button
                     onClick={() => setIsSidebarOpen(true)}
-                    className="p-2 rounded-xl hover:bg-white/20 active:scale-95 transition-all"
-                    title="תפריט"
-                    aria-label="פתח תפריט"
-                    style={{ color: settings.appTheme.headerTextColor }}
+                    className={`w-9 h-9 sm:w-10 sm:h-10 p-1.5 sm:p-2 rounded-xl active:scale-95 transition-all shadow-2xs flex items-center justify-center flex-shrink-0 ${
+                      isCustomPalette
+                        ? 'hover:bg-white/20'
+                        : 'bg-white dark:bg-neutral-800/95 border border-sky-200/80 dark:border-neutral-700 text-slate-700 dark:text-slate-200 hover:text-blue-600 dark:hover:text-blue-400 hover:border-blue-400 dark:hover:border-blue-600 hover:shadow-xs'
+                    }`}
+                    title={t('menu', 'תפריט')}
+                    aria-label={t('menu', 'פתח תפריט')}
+                    style={isCustomPalette ? { color: settings.appTheme.headerTextColor } : undefined}
                 >
-                    <Bars3Icon className="w-6 h-6" />
+                    <Bars3Icon className="w-5 h-5 sm:w-5.5 sm:h-5.5 drop-shadow-2xs" />
                 </button>
                 {showBackButton && (
-                <button onClick={() => navigate(-1)} className="p-2 rounded-xl hover:bg-white/20 active:scale-95 transition-all" title="חזור" aria-label="חזור" style={{ color: settings.appTheme.headerTextColor }}>
-                    <ArrowRightIcon className="w-6 h-6" />
+                <button
+                    onClick={() => navigate(-1)}
+                    className={`w-9 h-9 sm:w-10 sm:h-10 p-1.5 sm:p-2 rounded-xl active:scale-95 transition-all shadow-2xs flex items-center justify-center flex-shrink-0 ${
+                      isCustomPalette
+                        ? 'hover:bg-white/20'
+                        : 'bg-white dark:bg-neutral-800/95 border border-sky-200/80 dark:border-neutral-700 text-slate-700 dark:text-slate-200 hover:text-blue-600 dark:hover:text-blue-400 hover:border-blue-400 dark:hover:border-blue-600 hover:shadow-xs'
+                    }`}
+                    title={t('back', 'חזור')}
+                    aria-label={t('back', 'חזור')}
+                    style={isCustomPalette ? { color: settings.appTheme.headerTextColor } : undefined}
+                >
+                    <ArrowRightIcon className={`w-5 h-5 sm:w-5.5 sm:h-5.5 transition-transform drop-shadow-2xs ${isRTL ? '' : 'rotate-180'}`} />
                 </button>
                 )}
                 {showHomeButton && (
-                <Link to="/" className="p-2 rounded-xl hover:bg-white/20 active:scale-95 transition-all" title="דף הבית" aria-label="עבור לדף הבית" style={{ color: settings.appTheme.headerTextColor }}>
-                    <HomeIcon className="w-6 h-6" />
+                <Link
+                    to="/"
+                    className={`w-9 h-9 sm:w-10 sm:h-10 p-1.5 sm:p-2 rounded-xl active:scale-95 transition-all shadow-2xs hidden sm:flex items-center justify-center flex-shrink-0 ${
+                      isCustomPalette
+                        ? 'hover:bg-white/20'
+                        : 'bg-white dark:bg-neutral-800/95 border border-sky-200/80 dark:border-neutral-700 text-slate-700 dark:text-slate-200 hover:text-blue-600 dark:hover:text-blue-400 hover:border-blue-400 dark:hover:border-blue-600 hover:shadow-xs'
+                    }`}
+                    title={t('home', 'דף הבית')}
+                    aria-label={t('home', 'עבור לדף הבית')}
+                    style={isCustomPalette ? { color: settings.appTheme.headerTextColor } : undefined}
+                >
+                    <HomeIcon className="w-5 h-5 sm:w-5.5 sm:h-5.5 drop-shadow-2xs" />
                 </Link>
                 )}
             </div>
-            <h1 className="text-base sm:text-lg font-bold tracking-tight absolute left-1/2 -translate-x-1/2 rtl:left-auto rtl:-translate-x-0 rtl:right-1/2 rtl:translate-x-1/2 whitespace-nowrap" style={{ color: settings.appTheme.headerTextColor }}>
-                {getPageTitle()}
-            </h1>
-            <div className="flex items-center gap-1.5">
-                <PendingSyncIndicator headerTextColor={settings.appTheme.headerTextColor} />
-                <button onClick={() => setIsSearchOpen(true)} className="p-2 rounded-xl hover:bg-white/20 active:scale-95 transition-all" title="חיפוש" aria-label="פתח חיפוש" style={{ color: settings.appTheme.headerTextColor }}>
-                    <MagnifyingGlassIcon className="w-6 h-6" />
+
+            {/* Title - Center & gracefully truncated so icons always have full space on mobile */}
+            <div className="flex-1 min-w-0 px-1 sm:px-2 text-center">
+              <h1
+                className={`text-xs sm:text-base md:text-lg font-bold tracking-tight truncate ${
+                  isCustomPalette ? '' : 'text-slate-800 dark:text-neutral-100'
+                }`}
+                style={isCustomPalette ? { color: settings.appTheme.headerTextColor } : undefined}
+              >
+                  {getPageTitle()}
+              </h1>
+            </div>
+
+            {/* Trailing Actions: Sync, Search, Notifications */}
+            <div className="flex items-center gap-1 sm:gap-1.5 flex-shrink-0">
+                <PendingSyncIndicator headerTextColor={isCustomPalette ? settings.appTheme.headerTextColor : undefined} />
+                <button
+                  onClick={() => setIsSearchOpen(true)}
+                  className={`w-9 h-9 sm:w-10 sm:h-10 p-1.5 sm:p-2 rounded-xl active:scale-95 transition-all shadow-2xs flex items-center justify-center flex-shrink-0 ${
+                    isCustomPalette
+                      ? 'hover:bg-white/20'
+                      : 'bg-white dark:bg-neutral-800/95 border border-sky-200/80 dark:border-neutral-700 text-slate-700 dark:text-slate-200 hover:text-blue-600 dark:hover:text-blue-400 hover:border-blue-400 dark:hover:border-blue-600 hover:shadow-xs'
+                  }`}
+                  title={t('search', 'חיפוש')}
+                  aria-label={t('search', 'פתח חיפוש')}
+                  style={isCustomPalette ? { color: settings.appTheme.headerTextColor } : undefined}
+                >
+                    <MagnifyingGlassIcon className="w-5 h-5 sm:w-5.5 sm:h-5.5 drop-shadow-2xs" />
                 </button>
-                <Link to="/notifications" className="p-2 rounded-xl hover:bg-white/20 active:scale-95 transition-all relative" title="יומן פעילות" aria-label="פתח יומן פעילות" style={{ color: settings.appTheme.headerTextColor }}>
-                <BellIcon className="w-6 h-6" />
+                <Link
+                  to="/notifications"
+                  className={`w-9 h-9 sm:w-10 sm:h-10 p-1.5 sm:p-2 rounded-xl active:scale-95 transition-all relative shadow-2xs flex items-center justify-center flex-shrink-0 ${
+                    isCustomPalette
+                      ? 'hover:bg-white/20'
+                      : 'bg-white dark:bg-neutral-800/95 border border-sky-200/80 dark:border-neutral-700 text-slate-700 dark:text-slate-200 hover:text-blue-600 dark:hover:text-blue-400 hover:border-blue-400 dark:hover:border-blue-600 hover:shadow-xs'
+                  }`}
+                  title={t('navNotifications', 'יומן פעילות')}
+                  aria-label={t('navNotifications', 'פתח יומן פעילות')}
+                  style={isCustomPalette ? { color: settings.appTheme.headerTextColor } : undefined}
+                >
+                {unreadCount > 0 ? (
+                  <BellAlertIcon className="w-5 h-5 sm:w-5.5 sm:h-5.5 drop-shadow-2xs" />
+                ) : (
+                  <BellIcon className="w-5 h-5 sm:w-5.5 sm:h-5.5 drop-shadow-2xs" />
+                )}
                 {unreadCount > 0 && (
-                    <span className="absolute top-1.5 right-1.5 flex h-4 min-w-[1rem] px-1 rounded-full bg-red-500 text-white text-[10px] font-black ring-2 ring-white/90 items-center justify-center animate-pulse" aria-label={`${unreadCount} התראות חדשות`}>
+                    <span className="absolute -top-1 -right-1 flex h-4 min-w-[1rem] px-1 rounded-full bg-rose-600 text-white text-[10px] font-bold ring-2 ring-white dark:ring-neutral-900 items-center justify-center animate-pulse shadow-xs" aria-label={`${unreadCount} התראות חדשות`}>
                         {unreadCount > 9 ? '9+' : unreadCount}
                     </span>
                 )}
@@ -321,16 +404,24 @@ const MainLayout: React.FC = () => {
             </div>
             </div>
             {breadcrumbs.length > 1 && (
-                <nav aria-label="breadcrumb" className="text-xs mt-2 flex items-center gap-1.5 overflow-x-auto py-1" style={{ color: settings.appTheme.headerTextColor }}>
+                <nav
+                  aria-label="breadcrumb"
+                  className={`text-xs mt-2.5 pt-2 border-t flex items-center gap-1.5 overflow-x-auto py-0.5 ${
+                    isCustomPalette
+                      ? 'border-white/10'
+                      : 'border-neutral-100 dark:border-neutral-800/80 text-neutral-500 dark:text-neutral-400 font-medium'
+                  }`}
+                  style={isCustomPalette ? { color: settings.appTheme.headerTextColor } : undefined}
+                >
                     {breadcrumbs.map((crumb, index) => (
                         <React.Fragment key={index}>
-                            {index > 0 && <ChevronLeftIcon className="w-3 h-3 flex-shrink-0 opacity-60" />}
+                            {index > 0 && <ChevronLeftIcon className={`w-3.5 h-3.5 flex-shrink-0 ${isRTL ? '' : 'rotate-180'} ${isCustomPalette ? 'opacity-60' : 'text-neutral-400 dark:text-neutral-500'}`} />}
                             {index < breadcrumbs.length - 1 ? (
-                                <Link to={crumb.link} className="hover:underline opacity-85 truncate font-medium">
+                                <Link to={crumb.link} className="hover:underline hover:text-neutral-900 dark:hover:text-neutral-100 truncate font-medium">
                                     {crumb.label}
                                 </Link>
                             ) : (
-                                <span className="font-bold truncate opacity-100" aria-current="page">
+                                <span className={`font-bold truncate ${isCustomPalette ? 'opacity-100' : 'text-neutral-900 dark:text-neutral-100'}`} aria-current="page">
                                     {crumb.label}
                                 </span>
                             )}
@@ -340,7 +431,7 @@ const MainLayout: React.FC = () => {
             )}
         </div>
       </header>
-      <main key={location.pathname} className="flex-grow container mx-auto p-4 sm:p-6 animate-fadeInUp pb-40" style={{ animationDuration: '0.5s' }}>
+      <main key={location.pathname} className="flex-grow container max-w-7xl mx-auto p-4 sm:p-6 animate-fadeInUp pb-48 sm:pb-52" style={{ animationDuration: '0.5s' }}>
         <Suspense fallback={<div className="flex justify-center items-center h-64"><LoadingSpinner text="טוען עמוד..."/></div>}>
             <Routes>
               <Route path="/dashboard" element={<DashboardPage />} />
@@ -348,6 +439,7 @@ const MainLayout: React.FC = () => {
               <Route path="/projects" element={<BuildingsListPage />} />
               <Route path="/smart-import" element={<AISmartImportPage />} />
               <Route path="/project/:projectId" element={<BuildingDetailPage />} />
+              <Route path="/project/:projectId/systems" element={<ProjectSystemsPage />} />
               <Route path="/project/:projectId/checklist" element={<ProjectChecklistPage />} />
               <Route path="/project/:projectId/reports" element={<ProjectReportsPage />} />
               <Route path="/project/:projectId/files" element={<ProjectFilesPage />} />
@@ -395,6 +487,8 @@ const MainLayout: React.FC = () => {
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
         </Suspense>
+        {/* Dedicated bottom spacer ensuring cards and bottom elements are completely visible above the bottom navigation bar */}
+        <div className="h-24 sm:h-28 w-full flex-shrink-0 pointer-events-none" aria-hidden="true" />
       </main>
       <BottomNavBar />
       <Sidebar 

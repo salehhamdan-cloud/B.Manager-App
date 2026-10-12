@@ -55,16 +55,16 @@ const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({ title, children
     }, [variant, settings.appTheme]);
 
     return (
-        <div className={`bg-white shadow-lg rounded-2xl border border-slate-200/80 overflow-hidden ${className}`}>
+        <div className={`bg-white dark:bg-neutral-900 shadow-2xs rounded-2xl border border-neutral-200 dark:border-neutral-800 overflow-hidden ${className}`}>
             <div
-                className="w-full flex justify-between items-center p-4 text-left rtl:text-right font-semibold flex-wrap gap-2"
+                className="w-full flex justify-between items-center p-4 text-left rtl:text-right font-bold flex-wrap gap-2"
                 style={headerStyles}
             >
                 <div className="flex items-center gap-3">
                     {title}
                     {count !== undefined && (
                         <span
-                            className="text-xs font-semibold px-2.5 py-1 rounded-full"
+                            className="text-xs font-mono font-bold px-2.5 py-1 rounded-full"
                             style={countStyles}
                         >
                             {count}
@@ -74,7 +74,7 @@ const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({ title, children
                 {actionText && onActionClick && (
                     <button
                         onClick={onActionClick}
-                        className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg transition-colors"
+                        className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-xl transition-colors shadow-2xs active:scale-95"
                         style={{
                             backgroundColor: 'rgba(255, 255, 255, 0.2)',
                             color: 'inherit'
@@ -85,7 +85,7 @@ const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({ title, children
                     </button>
                 )}
             </div>
-            <div className="p-4 sm:p-6 border-t border-slate-200">
+            <div className="p-4 sm:p-6 border-t border-neutral-100 dark:border-neutral-800 text-neutral-800 dark:text-neutral-200">
                 {children}
             </div>
         </div>

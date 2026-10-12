@@ -1,88 +1,28 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { usePendingSync } from '../../hooks/usePendingSync';
 import { ArrowPathIcon, CheckCircleIcon, ExclamationTriangleIcon, XMarkIcon } from '../icons/FeedbackIcons';
+import { Cloud, CloudOff, CloudUpload } from 'lucide-react';
 
-// Modern colored Cloud Sync Icon
+// Modern Cloud Sync Icon
 const ModernCloudSyncIcon: React.FC<{ isSyncing?: boolean; hasPending?: boolean; isOffline?: boolean; className?: string }> = ({
   isSyncing,
   hasPending,
   isOffline,
-  className = "w-6 h-6",
+  className = "w-5 h-5",
 }) => {
   if (isOffline) {
-    return (
-      <svg className={className} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path
-          d="M19.35 10.04C18.67 6.59 15.64 4 12 4c-3.14 0-5.83 1.95-6.84 4.79C2.42 9.28 0.5 11.88 0.5 15c0 3.87 3.13 7 7 7h11.5c3.04 0 5.5-2.46 5.5-5.5 0-2.84-2.16-5.17-4.9-5.46"
-          fill="#F59E0B"
-          fillOpacity="0.2"
-        />
-        <path
-          d="M19.35 10.04C18.67 6.59 15.64 4 12 4c-3.14 0-5.83 1.95-6.84 4.79C2.42 9.28 0.5 11.88 0.5 15c0 3.87 3.13 7 7 7h11.5c3.04 0 5.5-2.46 5.5-5.5 0-2.84-2.16-5.17-4.9-5.46z"
-          stroke="#D97706"
-          strokeWidth="1.8"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-        <path d="M3 3l18 18" stroke="#DC2626" strokeWidth="2.2" strokeLinecap="round" />
-      </svg>
-    );
+    return <CloudOff className={`${className} text-amber-500`} strokeWidth={2} />;
   }
 
   if (hasPending) {
-    return (
-      <svg className={className} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path
-          d="M19.35 10.04C18.67 6.59 15.64 4 12 4c-3.14 0-5.83 1.95-6.84 4.79C2.42 9.28 0.5 11.88 0.5 15c0 3.87 3.13 7 7 7h11.5c3.04 0 5.5-2.46 5.5-5.5 0-2.84-2.16-5.17-4.9-5.46"
-          fill="#0284C7"
-          fillOpacity="0.2"
-        />
-        <path
-          d="M19.35 10.04C18.67 6.59 15.64 4 12 4c-3.14 0-5.83 1.95-6.84 4.79C2.42 9.28 0.5 11.88 0.5 15c0 3.87 3.13 7 7 7h11.5c3.04 0 5.5-2.46 5.5-5.5 0-2.84-2.16-5.17-4.9-5.46z"
-          stroke="#0284C7"
-          strokeWidth="1.8"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-        <path
-          d="M12 12v4m0 0l-2-2m2 2l2-2"
-          stroke="#F59E0B"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          className={isSyncing ? "animate-bounce" : ""}
-        />
-      </svg>
-    );
+    return <CloudUpload className={`${className} text-sky-500 ${isSyncing ? "animate-pulse" : ""}`} strokeWidth={2} />;
   }
 
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path
-        d="M19.35 10.04C18.67 6.59 15.64 4 12 4c-3.14 0-5.83 1.95-6.84 4.79C2.42 9.28 0.5 11.88 0.5 15c0 3.87 3.13 7 7 7h11.5c3.04 0 5.5-2.46 5.5-5.5 0-2.84-2.16-5.17-4.9-5.46"
-        fill="#10B981"
-        fillOpacity="0.2"
-      />
-      <path
-        d="M19.35 10.04C18.67 6.59 15.64 4 12 4c-3.14 0-5.83 1.95-6.84 4.79C2.42 9.28 0.5 11.88 0.5 15c0 3.87 3.13 7 7 7h11.5c3.04 0 5.5-2.46 5.5-5.5 0-2.84-2.16-5.17-4.9-5.46z"
-        stroke="#10B981"
-        strokeWidth="1.8"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M9 14.5l2 2 4-4"
-        stroke="#059669"
-        strokeWidth="2.2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
+  return <Cloud className={`${className} text-emerald-500`} strokeWidth={2} />;
 };
 
 export const PendingSyncIndicator: React.FC<{ headerTextColor?: string }> = ({
-  headerTextColor = '#ffffff',
+  headerTextColor,
 }) => {
   const {
     pendingCount,
@@ -121,14 +61,13 @@ export const PendingSyncIndicator: React.FC<{ headerTextColor?: string }> = ({
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl transition-all active:scale-95 text-xs font-bold ${
+        className={`w-9 h-9 sm:w-auto p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl transition-all active:scale-95 text-xs font-bold flex items-center justify-center gap-1.5 shadow-2xs flex-shrink-0 ${
           hasPending
-            ? 'bg-amber-500/20 text-amber-200 border border-amber-400/40 hover:bg-amber-500/30 shadow-sm'
+            ? 'bg-amber-500/10 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 border border-amber-300 dark:border-amber-800 hover:bg-amber-500/20 shadow-2xs'
             : !isOnline
-            ? 'bg-rose-500/20 text-rose-200 border border-rose-400/40 hover:bg-rose-500/30'
-            : 'hover:bg-white/20 opacity-90 hover:opacity-100'
+            ? 'bg-rose-500/10 dark:bg-rose-950/40 text-rose-700 dark:text-rose-400 border border-rose-300 dark:border-rose-800 hover:bg-rose-500/20'
+            : 'bg-white dark:bg-neutral-800/95 border border-sky-200/80 dark:border-neutral-700 text-slate-800 dark:text-slate-100 hover:text-blue-600 dark:hover:text-blue-400 hover:border-blue-400 dark:hover:border-blue-600'
         }`}
-        style={{ color: hasPending ? undefined : headerTextColor }}
         title={
           hasPending
             ? `${pendingCount} שינויים מקומיים ממתינים לסנכרון למסד הנתונים`
@@ -158,18 +97,18 @@ export const PendingSyncIndicator: React.FC<{ headerTextColor?: string }> = ({
         {/* Text description on tablet & desktop */}
         <span className="hidden md:inline-flex items-center gap-1 font-semibold text-[11px] truncate max-w-[110px]">
           {isSyncing ? (
-            <span className="flex items-center gap-1 text-sky-200">
+            <span className="flex items-center gap-1 text-sky-600 dark:text-sky-300">
               <ArrowPathIcon className="w-3.5 h-3.5 animate-spin" />
               <span>מסנכרן...</span>
             </span>
           ) : hasPending ? (
-            <span className="text-amber-300 font-bold truncate">
+            <span className="text-amber-700 dark:text-amber-300 font-bold truncate">
               {pendingCount} להמתנה
             </span>
           ) : !isOnline ? (
-            <span className="text-rose-300">לא מקוון</span>
+            <span className="text-rose-600 dark:text-rose-400 font-bold">לא מקוון</span>
           ) : (
-            <span className="opacity-80">מסונכרן</span>
+            <span className="text-slate-700 dark:text-slate-200 font-semibold">מסונכרן</span>
           )}
         </span>
       </button>

@@ -749,6 +749,7 @@ export const getSystemLogsByBuildingId = async (buildingId: string): Promise<Bui
     const fromProject = project?.systemLogs || [];
     return Array.from(new Map([...fromStore, ...fromProject].map(item => [item.id, item])).values());
 };
+export const getBuildingSystemLogs = getSystemLogsByBuildingId;
 export const addSystemLog = async (log: BuildingSystemLog): Promise<void> => {
     await putToStore(OBJECT_STORE_SYSTEM_LOGS, log);
     const project = await getProject(log.buildingId);

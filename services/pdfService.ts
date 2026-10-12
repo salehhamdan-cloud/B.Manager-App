@@ -1,5 +1,6 @@
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import bidiFactory from 'bidi-js';
 import {
     AppSettings, ReportPdfGenerationOptions, FormPdfGenerationOptions, ChecklistPdfGenerationOptions, InventoryPdfOptions,
     Project, Report,
@@ -16,19 +17,29 @@ import {
     ProjectTodo,
     ProjectForm,
     FormTemplate,
-    FormAnswer
+    FormAnswer,
+    BuildingSystemLog,
+    BuildingSystemType
 } from '../types';
 import { SEVERITY_COLORS } from '../constants';
 import { formatDate, formatDateTime, getFileValidityStatus } from '../utils/dateFormatter';
 
 const FAILED_IMAGE_PLACEHOLDER = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAGQAAABkCAYAAABw4pVUAAAAAXNSR0IArs4c6QAAAPFJREFUeF7t0EENwDAAAmbA/08eI4MMBEaHH3g27M50JgJFCJRIoBKBRAKVCKQSKESgEgGVCKRKoBABlQikSqASgUQEUCWQSASiCCQSiEIgEQFEFEFEFEFEFEFEFEFEFEFEFEFEFEFEFEFEFEFEFEFEFEFEFEFEFEFEFEFEFEFEFEFEFEFEFEFEFEFEFEFEFEFEFEFEFEFEFEFEFEFEFEFEFEFEFEFEFEFEFEFEFEFEFEFEFEFEFEFEFEFEFEFEFEFEFEFEFEFEFEFEFEFEFEFEFEFEFEFEFEFEFEFEFEFEFEFEFEFEFEFEFEFEFEFEFEFEFEFEFEGEiABFAqkEKkSgEgGVCKQSKESgEgGVCKRKoBABlQikSqASgUQEUCWQSAQifwA5bA8+51lEVAAAAABJRU5ErkJggg==';
 
-// Base64 encoded Heebo-Regular.ttf font to ensure offline availability and fix rendering issues.
-const HEEBO_REGULAR_BASE64 = "AAEAAAAQAQAABAAAR0RFRgB4AfQAAEdEAAAHeEdQT1PyExZPAABHRAAAG3pHU1VCAa8dpwAAeGQAAE9TLzLC8aQFAAAFsAAAAGBjbWFwAE8LegAABxQAAAIwY3Z0IAAiAfsAAEGgAAAAGmdhc3AAAAAQAAHkAAAAEGdseWY1P6hNAAEgKAAAEGhoZWFkBWsI2wAAADcAAAA2aGhlYQfsA9gAAAA8AAAACBobXR4AoUAAQAAfWwAAARoa2VybgH4AUEAAH2cAAJnaWxvY2EABAAJAAAmoAAABmFhbnUAZQBkAAABeAAAAAhwb3N0AAMAAAAAAmoAAAACAAABAAAAAQAAa72vGF8PPPUACwQAAAAAAN/9i9kAAAAA3/2L2QAB/4YDcAN/AAAACAACAAAAAAAAAAEAAACf/YgAAM3/YYDcAN/AAEAAAAAAAAAAAAAAAAAAADWAAEAAAAAAAB3AAEAAAAAAADWAAMAWwAFAAEAAAAAAEYABwAAAAAABAIAAAEAAAAA3wADAAEECQABACgABgADAAEECQACAA4ACwADAAEECQADADgAEgADAAEECQAEACgAFgADAAEECQAFADYAGgADAAEECQAGACgAHAEDAAMAADwAAAAEAAAAAwAAKAAAFAADADwADgAMAAD/wAAeAAAAADwAAAAEAAAAAAAAAAAAAABodHRwOi8vd3d3Lm9wZW50eXBlLm9yZwBIdHRwczovL2dpdGh1Yi5jb20vZ29vZ2xlZm9udHMvaGVlYm8AVjIuMC41ADtib2xkADtkaXNwbGF5ADt0ZXh0AEhlZWJvLVJlZ3VsYXIAT21lZ2EgQWxwaGEAVgBlAHIAcwBpAG8AbgAgADIALgAwAC4ANQA7ACAASQBzACAAQwByAGUAYQB0AGUAZAAgAEIAeQAgAE8AbQBlAGcAIAAQAEgAZQBlAGIAbwAgAFIAZQBnAHUAbABhAHIAIABOAGkAbQAgAEgAZQBlAGIAbwAgAEgAZQBlAGIAbwBSAGUAZwB1AHwAYQByAEIAZQBuACAASABhAGcAZQByACwAIABEAGEAbgBpAGUAbAAgAEIAZQByAGsAbwB3AGkAegAIAEEAcgBpAGUAbAAgAEcAbwB0AGgAaQBjACAASABFAEYAbwBuAHQAQwBvAG4AdAByAGkAYgB1AHQAaQBvAG4ALAAgAFMAaQBsAHcAYQB5ACAARgBvAHUAbgBkAHIAeQAgACgAaAB0AHQAcAA6AC8ALwBzAGMAcgBpAHAAdABzAC4AcwBpAGwALgBvAHIAZwAvAEMAUgAvAE8ARgBMAEAAKQAIAEMAaQB0AGEAZABlAGwALABzAHUAZAAgAEMAYQBsAGEAbgBkAHIAaQBhACAAMQAyACAAZgBvAG4AdABzACAAYgB5ACAAQQByAGkAYQBuAGEAIABWAGkAbgBjAG8AdQByAAgAQQBCAEUAWwBbAEIAYQBkAGEAZABlAFsAWwBDAEMAXQBkAGEAZABlAFsAIAAxACAAMgAgAGEAIAAwAFwAXQBdAGEAIAAwADEAMgA5AFsAWwAxADIANwBbAEIAZgBbAEIAbABbAEIAcQBkAGEAZABlAFsAXQBfAF4AYABgAGEAYQBiAGMAYwBkAGQAZQBlAGYAZgBnAGcAaABpAGoAawBsAG0AbgBvAHAAcQByAHMAdAB1AHYAdwB4AHkAegB7AHwAfQB+AIQAjgCEAI4AhADqAI4AhADqAI4AhADqAI4AhADqAI4AhACAAIwAigCMAIoAjACGAJAAkgCSAJIAkACOAJAAlACSAJQAogCUAJYAogCWAKoAogCqALoAogC6AOoAugDOAJAAdABqAHQAagB0AGoAdABqAHQAagB0AGoAdABqAHQAagB0AGoAdABqAHQAagB0AGoAdABqAHQAagB0AGoAdABqAHQAagB0AGoAdABqAHQAagB0AGoAdABqAHQAagB0AGoAdABqAHQAagB0AGoAdABqAHQAagB0AGoAdABqAHQAagB0AGoAdABqAHQAagB0AGoAdABqAHQAagB0AGoAdABqAHQAagB0AGoAdABqAHQAagB0AGoAdABqAHQAagB0AGoAdABqAHQAagB0AGoAdABqAHQAagB0AGoAdABqAHQAagB0AGoAdABqAHQAagB0AGoAdABqAHQAagB0AGoAdABqAHQAagB0AGoAdABqAHQAagB0AGoAdABqAHQAagB0AGoAdABqAHQAagB0AGoAdABqAHQAagB0AGoAdABqAHQAagB0AGoAdABqAHQAagB0AGoAdABqAHQAagB0AGoAdABqAHQAagB0AGoAdABqAHQAagB0AGoAdABqAHQAagB0AGoAdABqAHQAagB0AGoAdABqAHQAagB0AGoAdABqAHQAagB0AGoAdABqAHQAagB0AGoAdABqAHQAagB0AGoAdABqAHQAagB0AGoAdABqAHQAagB0AGoAdABqAHQAagB0AGoAdABqAHQAagB0AGoAdABqAHQAagB0AGoAdABqAHQAagB0AGoAdABqAHQAagB0AGoAdABqAHQAagB0AGoAdABqAHQAagB0AGoAdABqAHQAagB0AGoAdABqAHQAagB0AGoAdABqAHQAagB0AGoAdABqAHQAagB0AGoAdABqAHQAagB0AGoAdABqAHQAagB0AGoAdABqAHQAagB0AGoAdABqAHQAagB0AGoAdABqAHQAagB0AGoAdABqAHQAagB0AGoAdABqAHQAagB0AGoAdABqAHQAagB0AGoAdABqAHQAagB0AGoAdABqAHQAagB0AGoAdABqAHQAagB0AGoAdABqAHQAagB0AGoAdABqAHQAagB0AGoAdABqAHQAagB0AGoAdABqAHQAagB0AGoAdABqAHQAagB0AGoAdABqAHQAagB0AGoAdABqAHQAagB0AGoAdABqAHQAagB0AGoAdABqAHQAagB0AGoAdABqAHQAagB0AGoAdABqAHQAagB0AGoAdABqAHQAagB0AGoAdABqAHQAagB0AGoAdABqAHQAagB0AGoAdABqAHQAagB0AGoAdABqAHQAagB0AGoAdABqAHQAagB0AGoAdABqAHQAagB0AGoAdABqAHQAagB0AGoAdABqAHQAagB0AGoAdABqAHQAagB0AGoAdABqAHQAagB0AGoAdABqAHQAagB0AGoAdABqAHQAagB0AGoAdABqAHQAagB0AGoAdABqAHQAagB0AGoAdABqAHQAagB0AGoAdABqAHQAagB0AGoAdABqAHQAagB0AGoAdABqAHQAagB0AGoAdABqAHQAagB0AGoAdABqAHQAagB0AGoAdABqAHQAagB0AGoAdABqAHQAagB0AGoAdABqAHQAagB0AGoAdABqAHQAagB-";
+import { HEBREW_FONT_NAME, HEBREW_FONT_BASE64 } from './hebrewFont';
+
+// Base64 encoded Rubik font for offline availability and complete Hebrew character rendering
 const FONT_NAME_FALLBACK = 'Helvetica';
-const FONT_NAME_HEBREW = 'Heebo';
+const FONT_NAME_HEBREW = HEBREW_FONT_NAME;
 let currentFontName = FONT_NAME_FALLBACK;
-let defaultHebrewFontLoaded = false; // Flag to prevent re-fetching font on each PDF generation
+let cachedHebrewBinaryFont: string | null = null;
+
+function getHebrewBinaryFont(): string {
+    if (!cachedHebrewBinaryFont) {
+        cachedHebrewBinaryFont = atob(HEBREW_FONT_BASE64);
+    }
+    return cachedHebrewBinaryFont;
+}
 
 // Helper to convert array buffer to binary string for jsPDF's VFS
 function arrayBufferToBinaryString(buffer: ArrayBuffer) {
@@ -41,38 +52,83 @@ function arrayBufferToBinaryString(buffer: ArrayBuffer) {
     return binary;
 }
 
+const mirrorBrackets = (char: string): string => {
+    switch (char) {
+        case '(': return ')';
+        case ')': return '(';
+        case '[': return ']';
+        case ']': return '[';
+        case '{': return '}';
+        case '}': return '{';
+        case '<': return '>';
+        case '>': return '<';
+        default: return char;
+    }
+};
+
+const bidi = bidiFactory();
+
+function protectLtrRuns(text: string): string {
+    // 1. URLs & Emails
+    let res = text.replace(/https?:\/\/[^\s]+/g, '\u202A$&\u202C');
+    res = res.replace(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g, '\u202A$&\u202C');
+
+    // 2. Phone numbers (with spaces, dashes, parentheses, plus sign)
+    // E.g. +972-50-1234567, 050-1234567, 050 123 4567, (050) 123-4567, 03-9876543
+    res = res.replace(/(?:\+?[0-9]{1,4}[\s-]*)?(?:\([0-9]{2,4}\)[\s-]*)?[0-9]{2,4}(?:[\s-][0-9]{3,4}){1,3}/g, '\u202A$&\u202C');
+
+    // 3. Formatted numbers with thousand separators (commas) and decimals: 1,500 or 1,500.50 or 1,500,000
+    res = res.replace(/[0-9]{1,3}(?:,[0-9]{3})+(?:\.[0-9]+)?/g, '\u202A$&\u202C');
+
+    // 4. Decimals: 12.5, 0.95
+    res = res.replace(/[0-9]+\.[0-9]+/g, '\u202A$&\u202C');
+
+    // 5. Date / time ranges and dates: 10:00-12:00, 10:00 - 12:00, 11/10/2026, 11.10.2026, 10-20, 10 - 20
+    res = res.replace(/[0-9]{1,2}:[0-9]{2}(?:[:.][0-9]{2})?(?:\s*-\s*[0-9]{1,2}:[0-9]{2}(?:[:.][0-9]{2})?)?/g, '\u202A$&\u202C');
+    res = res.replace(/[0-9]{1,4}[-/.][0-9]{1,2}[-/.][0-9]{1,4}/g, '\u202A$&\u202C');
+    res = res.replace(/[0-9]+(?:\s*-\s*[0-9]+)+/g, '\u202A$&\u202C');
+
+    // 6. Alphanumeric model codes, apartments, rooms: ABC-123, VRV-4, 102A, 3B, M100, #12345, 4G
+    res = res.replace(/(?:#?[a-zA-Z0-9]+(?:[-_/][a-zA-Z0-9]+)+|#?[0-9]+[a-zA-Z]+|#?[a-zA-Z]+[0-9]+)/g, '\u202A$&\u202C');
+
+    return res;
+}
+
 /**
- * A robust BiDi text processing function for RTL text with LTR segments (like numbers and English).
- * It splits the text into logical segments, reverses the order of segments for an LTR renderer,
- * and then reverses the characters within each RTL segment to ensure they are readable.
- * Numbers and English words are treated as LTR and are not reversed internally.
- * @param text The logical string to process.
- * @returns A visually correct string ready for LTR rendering.
+ * Robust BiDi text processing function for RTL text with LTR segments (numbers, English words, punctuation).
+ * Uses the Unicode Bidirectional Algorithm (UAX #9 via bidi-js) with LTR protection for:
+ * - Multi-digit numbers and quantities (e.g. 12, 100 ₪, 25%, 1,500, 1,500.50)
+ * - Phone numbers (e.g. 050-1234567, 050 123 4567, +972-50-1234567, (050) 123-4567, 03-9876543)
+ * - Dates and time ranges (e.g. 11/10/2026, 11.10.2026, 2024-2026, 10:00-12:00, 10 - 20 ימים)
+ * - Alphanumeric codes, models, apartments/rooms (e.g. 102A, 3B, ABC-123, VRV-4, Daikin VRV, Schindler 5400)
+ * 
+ * Ensures English words and digits maintain their natural left-to-right reading order when embedded in Hebrew or Arabic text.
  */
-const processBidiText = (text: string): string => {
+export const processBidiText = (text: string | null | undefined): string => {
     if (text === null || text === undefined) return '';
     const str = String(text);
 
-    // If the string does not contain any RTL characters, return it as is.
-    const isRtl = /[\u0590-\u05FF]/.test(str);
+    // If string has no RTL characters (Hebrew: \u0590-\u05FF, Arabic: \u0600-\u06FF), return as is
+    const isRtl = /[\u0590-\u05FF\u0600-\u06FF]/.test(str);
     if (!isRtl) {
         return str;
     }
     
-    // Sanitize and process for BiDi rendering.
-    // This regex groups RTL characters, LTR characters (including numbers and punctuation), and neutral characters separately.
-    const segments = str.match(/[\u0590-\u05FF]+|[a-zA-Z0-9.,\/\-₪$€%:[\]{}()]+|[^\u0590-\u05FFa-zA-Z0-9.,\/\-₪$€%:[\]{}()]+/g) || [];
+    try {
+        return str.split('\n').map(line => {
+            if (!/[\u0590-\u05FF\u0600-\u06FF]/.test(line)) {
+                return line;
+            }
 
-    const reversedSegments = segments.reverse().map(segment => {
-        // Only reverse the characters within pure RTL (Hebrew) segments.
-        if (/^[\u0590-\u05FF]+$/.test(segment)) {
-            return segment.split('').reverse().join('');
-        }
-        // LTR segments and neutral characters are not reversed internally.
-        return segment;
-    });
-
-    return reversedSegments.join('');
+            const protectedLine = protectLtrRuns(line);
+            const levels = bidi.getEmbeddingLevels(protectedLine, 'rtl');
+            const indices = bidi.getReorderedIndices(protectedLine, levels);
+            const reordered = indices.map(i => protectedLine[i]).join('');
+            return reordered.replace(/[\u202A\u202C\u200E\u200F]/g, '');
+        }).join('\n');
+    } catch {
+        return str;
+    }
 };
 
 /**
@@ -174,20 +230,17 @@ class PdfBuilder {
           }
       }
 
-      // 2. Try default Hebrew font from embedded Base64
+      // 2. Try default Hebrew font from embedded Base64 (Rubik font with complete Hebrew glyphs)
       try {
-          if (!defaultHebrewFontLoaded) {
-            this.doc.addFileToVFS(`${FONT_NAME_HEBREW}.ttf`, atob(HEEBO_REGULAR_BASE64));
-            this.doc.addFont(`${FONT_NAME_HEBREW}.ttf`, FONT_NAME_HEBREW, 'normal');
-            this.doc.addFont(`${FONT_NAME_HEBREW}.ttf`, FONT_NAME_HEBREW, 'bold');
-            defaultHebrewFontLoaded = true; // Set flag after successful load
-          }
+          const binaryFont = getHebrewBinaryFont();
+          this.doc.addFileToVFS(`${FONT_NAME_HEBREW}.ttf`, binaryFont);
+          this.doc.addFont(`${FONT_NAME_HEBREW}.ttf`, FONT_NAME_HEBREW, 'normal');
+          this.doc.addFont(`${FONT_NAME_HEBREW}.ttf`, FONT_NAME_HEBREW, 'bold');
           this.doc.setFont(FONT_NAME_HEBREW);
           currentFontName = FONT_NAME_HEBREW;
           return;
       } catch (error) {
           console.error("Failed to load embedded Hebrew font, falling back to Helvetica:", error);
-          defaultHebrewFontLoaded = false; // Reset flag on failure
       }
 
       // 3. Fallback to Helvetica
@@ -266,8 +319,27 @@ class PdfBuilder {
     }
 
     public drawText(text: string | null | undefined, x: number, y: number, options: any = {}) {
-        const textToDraw = options.noBidi ? String(text || '') : processBidiText(String(text || ''));
+        if (text === null || text === undefined) return;
+        const str = String(text);
+        if (options.maxWidth) {
+            const lines = this.splitBidiText(str, options.maxWidth);
+            const fontSize = options.fontSize || this.doc.getFontSize();
+            const lineHeight = fontSize * 1.15;
+            lines.forEach((line, idx) => {
+                const subOpts = { ...options };
+                delete subOpts.maxWidth;
+                this.doc.text(line, x, y + (idx * lineHeight), subOpts);
+            });
+            return;
+        }
+        const textToDraw = options.noBidi ? str : processBidiText(str);
         this.doc.text(textToDraw, x, y, options);
+    }
+
+    public splitBidiText(text: string | null | undefined, maxWidth: number): string[] {
+        if (!text) return [];
+        const lines = this.doc.splitTextToSize(String(text), maxWidth);
+        return lines.map((line: string) => processBidiText(line));
     }
     
     public drawHeading(text: string, y?: number) {
@@ -315,19 +387,17 @@ class PdfBuilder {
         // Final enforcement of the top margin to ensure spacing from the header.
         finalOptions.margin.top = 100;
         
-        // Ensure BiDi text processing is always applied, even if user passes custom hooks.
-        const originalDidParseCell = options.didParseCell;
-        finalOptions.didParseCell = (data: any) => {
-            const text = Array.isArray(data.cell.text) ? data.cell.text : [String(data.cell.text)];
-            data.cell.text = text.map((t: string) => {
-                if (data.column.dataKey === 0 && data.section === 'head' && t === 'סטטוס') return t;
-                if (/\d{1,2}[/-]\d{1,2}[/-]\d{2,4}/.test(t)) {
-                    return t;
-                }
-                return processBidiText(t);
-            });
-            if (originalDidParseCell) {
-                originalDidParseCell(data);
+        // Apply BiDi text processing in willDrawCell so that multi-line text is split in natural order,
+        // and each visual line is reversed for jsPDF output without double-reversals.
+        const originalWillDrawCell = options.willDrawCell;
+        finalOptions.willDrawCell = (data: any) => {
+            if (originalWillDrawCell) {
+                originalWillDrawCell(data);
+            }
+            if (data.cell && data.cell.text && !(data.cell as any)._bidiDone) {
+                (data.cell as any)._bidiDone = true;
+                const textArr = Array.isArray(data.cell.text) ? data.cell.text : [String(data.cell.text)];
+                data.cell.text = textArr.map((t: string) => processBidiText(t));
             }
         };
     
@@ -422,7 +492,7 @@ class PdfBuilder {
             this.doc.setFontSize(this.settings.fontSizeMedium);
             detailsBody.forEach(row => {
                 const detailText = `${row[0]}: ${row[1]}`;
-                const textLines = this.doc.splitTextToSize(processBidiText(detailText), this.pageWidth - this.margin * 2);
+                const textLines = this.doc.splitTextToSize(detailText, this.pageWidth - this.margin * 2);
                 const textHeight = textLines.length * (this.settings.fontSizeMedium * 1.15);
                 this.checkPageBreak(textHeight + 5);
                 this.drawText(detailText, this.pageWidth - this.margin, this.yPos, { align: 'right', maxWidth: this.pageWidth - this.margin * 2 });
@@ -468,8 +538,12 @@ class PdfBuilder {
                 bodyStyles: { halign: 'right' },
                 columnStyles: { 1: { fontStyle: 'bold' } },
                 margin: { ...tableMargin, top: 100 },
-                didParseCell: (data: any) => {
-                    data.cell.text = [processBidiText(String(data.cell.raw))];
+                willDrawCell: (data: any) => {
+                    if (data.cell && data.cell.text && !(data.cell as any)._bidiDone) {
+                        (data.cell as any)._bidiDone = true;
+                        const textArr = Array.isArray(data.cell.text) ? data.cell.text : [String(data.cell.text)];
+                        data.cell.text = textArr.map((t: string) => processBidiText(t));
+                    }
                 }
             });
             
@@ -574,9 +648,9 @@ class PdfBuilder {
                 const textPadding = 5 * 2;
                 const fontSize = this.settings.fontSizeMedium;
     
-                const questionText = this.doc.splitTextToSize(processBidiText(item.label), columnStyles[2].cellWidth - textPadding);
-                const answerText = this.doc.splitTextToSize(processBidiText(displayValue), columnStyles[1].cellWidth - textPadding);
-                const commentsText = this.doc.splitTextToSize(processBidiText(answer?.description || ''), columnStyles[0].cellWidth - textPadding);
+                const questionText = this.doc.splitTextToSize(String(item.label || ''), columnStyles[2].cellWidth - textPadding);
+                const answerText = this.doc.splitTextToSize(String(displayValue || ''), columnStyles[1].cellWidth - textPadding);
+                const commentsText = this.doc.splitTextToSize(String(answer?.description || ''), columnStyles[0].cellWidth - textPadding);
                 const maxLines = Math.max(questionText.length, answerText.length, commentsText.length);
                 const textRowHeight = (maxLines * fontSize * 1.15) + textPadding;
                 totalBlockHeight += textRowHeight;
@@ -606,8 +680,12 @@ class PdfBuilder {
                     headStyles: { fillColor: pdfTheme.formGroupHeaderColor, textColor: pdfTheme.textColor, fontStyle: 'bold', halign: 'right' },
                     bodyStyles: { halign: 'right' },
                     margin: { top: 100 },
-                    didParseCell: (data: any) => {
-                        data.cell.text = [processBidiText(String(data.cell.raw))];
+                    willDrawCell: (data: any) => {
+                        if (data.cell && data.cell.text && !(data.cell as any)._bidiDone) {
+                            (data.cell as any)._bidiDone = true;
+                            const textArr = Array.isArray(data.cell.text) ? data.cell.text : [String(data.cell.text)];
+                            data.cell.text = textArr.map((t: string) => processBidiText(t));
+                        }
                     },
                     columnStyles: columnStyles,
                 });
@@ -646,7 +724,7 @@ class PdfBuilder {
 
                 if (form.reporterComments) {
                     this.doc.setFontSize(fontSizeSmall);
-                    const textLines = this.doc.splitTextToSize(processBidiText(form.reporterComments), columnWidth);
+                    const textLines = this.doc.splitTextToSize(String(form.reporterComments || ''), columnWidth);
                     const textHeight = textLines.length * (fontSizeSmall * 1.15) + 10;
                     this.drawText(form.reporterComments, startX + columnWidth, currentY, { align: 'right', maxWidth: columnWidth });
                     currentY += textHeight;
@@ -682,7 +760,7 @@ class PdfBuilder {
 
                 if (form.managerComments) {
                     this.doc.setFontSize(fontSizeSmall);
-                    const textLines = this.doc.splitTextToSize(processBidiText(form.managerComments), columnWidth);
+                    const textLines = this.doc.splitTextToSize(String(form.managerComments || ''), columnWidth);
                     const textHeight = textLines.length * (fontSizeSmall * 1.15) + 10;
                     this.drawText(form.managerComments, startX + columnWidth, currentY, { align: 'right', maxWidth: columnWidth });
                     currentY += textHeight;
@@ -748,8 +826,12 @@ class PdfBuilder {
             bodyStyles: { halign: 'right' },
             columnStyles: { 1: { fontStyle: 'bold' } },
             margin: { right: this.margin, left: this.margin + (availableWidth * 0.30) + 10, top: 100 },
-            didParseCell: (data: any) => {
-                data.cell.text = [processBidiText(String(data.cell.raw))];
+            willDrawCell: (data: any) => {
+                if (data.cell && data.cell.text && !(data.cell as any)._bidiDone) {
+                    (data.cell as any)._bidiDone = true;
+                    const textArr = Array.isArray(data.cell.text) ? data.cell.text : [String(data.cell.text)];
+                    data.cell.text = textArr.map((t: string) => processBidiText(t));
+                }
             }
         });
     
@@ -825,8 +907,9 @@ export const generateReportPdf = async (options: ReportPdfGenerationOptions): Pr
     
     builder.checkPageBreak(50);
     builder.doc.setFontSize(settings.fontSizeMedium);
+    const descLines = builder.doc.splitTextToSize(String(report.description || ''), builder.pageWidth - builder.margin * 2);
     builder.drawText(report.description, builder.pageWidth - builder.margin, builder.yPos, { align: 'right', maxWidth: builder.pageWidth - builder.margin * 2 });
-    builder.yPos += builder.doc.getTextDimensions(processBidiText(report.description), { maxWidth: builder.pageWidth - builder.margin * 2 }).h + 20;
+    builder.yPos += (descLines.length * (settings.fontSizeMedium * 1.15)) + 20;
     
     // Global Dashboard
     if (globalDashboard && settings.pdfIncludeDashboard) {
@@ -935,10 +1018,10 @@ export const generateReportPdf = async (options: ReportPdfGenerationOptions): Pr
             let totalBlockHeight = 0;
             const textPadding = 5 * 2; 
 
-            const descriptionLines = builder.doc.splitTextToSize(processBidiText(problem.description), columnStyles[3].cellWidth - textPadding);
-            const severityLines = builder.doc.splitTextToSize(processBidiText(problem.severity), columnStyles[2].cellWidth - textPadding);
-            const locationLines = builder.doc.splitTextToSize(processBidiText(problem.locationTag || ''), columnStyles[1].cellWidth - textPadding);
-            const notesLines = builder.doc.splitTextToSize(processBidiText(problem.notes || ''), columnStyles[0].cellWidth - textPadding);
+            const descriptionLines = builder.doc.splitTextToSize(problem.description, columnStyles[3].cellWidth - textPadding);
+            const severityLines = builder.doc.splitTextToSize(problem.severity, columnStyles[2].cellWidth - textPadding);
+            const locationLines = builder.doc.splitTextToSize(problem.locationTag || '', columnStyles[1].cellWidth - textPadding);
+            const notesLines = builder.doc.splitTextToSize(problem.notes || '', columnStyles[0].cellWidth - textPadding);
             
             const maxLines = Math.max(descriptionLines.length, severityLines.length, locationLines.length, notesLines.length, 1);
             const textRowHeight = (maxLines * fontSize * 1.15) + textPadding;
@@ -983,10 +1066,11 @@ export const generateReportPdf = async (options: ReportPdfGenerationOptions): Pr
                             builder.doc.rect(data.cell.x, data.cell.y, data.cell.width, data.cell.height, 'F');
                         }
                     }
-                },
-                didParseCell: (data) => {
-                    const textLines = Array.isArray(data.cell.text) ? data.cell.text : [String(data.cell.text)];
-                    data.cell.text = textLines.map(t => processBidiText(t));
+                    if (data.cell && data.cell.text && !(data.cell as any)._bidiDone) {
+                        (data.cell as any)._bidiDone = true;
+                        const textLines = Array.isArray(data.cell.text) ? data.cell.text : [String(data.cell.text)];
+                        data.cell.text = textLines.map((t: string) => processBidiText(t));
+                    }
                 },
                 columnStyles: columnStyles,
             });
@@ -1015,9 +1099,12 @@ export const generateReportPdf = async (options: ReportPdfGenerationOptions): Pr
                     headStyles: { fillColor: '#e2e8f0', textColor: '#334155', fontStyle: 'bold', halign: 'right' },
                     bodyStyles: { halign: 'right' },
                     margin: { top: 100 },
-                    didParseCell: (data) => { 
-                        const text = Array.isArray(data.cell.text) ? data.cell.text : [String(data.cell.text)];
-                        data.cell.text = text.map((t: string) => processBidiText(t));
+                    willDrawCell: (data) => { 
+                        if (data.cell && data.cell.text && !(data.cell as any)._bidiDone) {
+                            (data.cell as any)._bidiDone = true;
+                            const text = Array.isArray(data.cell.text) ? data.cell.text : [String(data.cell.text)];
+                            data.cell.text = text.map((t: string) => processBidiText(t));
+                        }
                     }
                 });
                 builder.yPos = (builder.doc as any).lastAutoTable.finalY;
@@ -1286,8 +1373,9 @@ export const generateQuotationsPdf = async ({ settings, quotationsByBuilding }: 
                         const formattedNumber = `₪ ${Math.round(data.cell.raw).toLocaleString('he-IL')}`;
                         data.cell.styles.halign = 'left';
                         data.cell.text = [formattedNumber];
+                        (data.cell as any)._bidiDone = true;
                     } else {
-                        data.cell.text = [processBidiText(String(data.cell.raw))];
+                        data.cell.text = [String(data.cell.raw || '')];
                     }
                 },
                 columnStyles: {
@@ -1702,7 +1790,7 @@ export const generateSubProjectDetailPdf = async ({ settings, project, subProjec
     builder.doc.setFontSize(settings.fontSizeMedium);
     builder.doc.setFont(currentFontName, 'normal');
     
-    const descriptionLines = builder.doc.splitTextToSize(processBidiText(subProject.description), contentWidth);
+    const descriptionLines = builder.doc.splitTextToSize(String(subProject.description || ''), contentWidth);
     builder.drawText(subProject.description, contentStartX + contentWidth, contentStartY, { align: 'right', maxWidth: contentWidth });
     const descriptionHeight = descriptionLines.length * (settings.fontSizeMedium * 1.15);
     contentStartY += descriptionHeight + 20;
@@ -1721,8 +1809,9 @@ export const generateSubProjectDetailPdf = async ({ settings, project, subProjec
                 const formattedNumber = `₪ ${Math.round(data.cell.raw).toLocaleString('he-IL')}`;
                 data.cell.styles.halign = 'left';
                 data.cell.text = [formattedNumber];
+                (data.cell as any)._bidiDone = true;
             } else {
-                data.cell.text = [processBidiText(String(data.cell.raw))];
+                data.cell.text = [String(data.cell.raw || '')];
             }
         },
         columnStyles: {
@@ -1731,4 +1820,222 @@ export const generateSubProjectDetailPdf = async ({ settings, project, subProjec
     });
     
     builder.finalize(`פרויקט - ${subProject.name}`, `sub_project_${subProject.name}`);
+};
+
+const SYSTEM_TYPE_LABELS_MAP: Record<string, string> = {
+    elevator: 'מעליות ומעלונים',
+    generator: 'גנרטור חירום ודלק',
+    hvac: 'מיזוג אוויר ו-HVAC',
+    fire_safety: 'גילוי וכיבוי אש',
+    water_pumps: 'משאבות מים ומאגרים',
+    electrical: 'חדר חשמל ומדידה',
+    other: 'תשתית נוספת',
+};
+
+const SYSTEM_TYPE_CATEGORIES: { type: BuildingSystemType; label: string }[] = [
+    { type: 'elevator', label: 'מעליות ומעלונים' },
+    { type: 'hvac', label: 'מיזוג אוויר ו-HVAC' },
+    { type: 'generator', label: 'גנרטור חירום ודלק' },
+    { type: 'fire_safety', label: 'מערכות גילוי וכיבוי אש' },
+    { type: 'water_pumps', label: 'משאבות מים ומאגרים' },
+    { type: 'electrical', label: 'חדר חשמל ומדידה' },
+    { type: 'other', label: 'תשתית נוספת' },
+];
+
+export const generateBuildingSystemsPdf = async ({ settings, project, systemLogs }: { settings: AppSettings, project: Project, systemLogs: BuildingSystemLog[] }) => {
+    const imageUrls: (string | undefined)[] = [
+        settings.companyInfo.url || settings.companyInfo.logo,
+        project?.images[0]?.url || project?.images[0]?.dataUrl
+    ].filter(Boolean);
+
+    const { imageCache } = await preloadImages(imageUrls);
+    const builder = new PdfBuilder(settings, imageCache);
+    await builder.initializeFont();
+
+    const title = `דוח מערכות ותשתיות: ${project.name}`;
+    const fileName = `systems_${project.name}`;
+
+    builder.drawProjectDetailsPage(project);
+    builder.addPage();
+
+    builder.drawHeading('יומן מערכות תשתית ובדיקות תקופתיות');
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const overdueCount = systemLogs.filter(s => s.nextInspectionDate && new Date(s.nextInspectionDate) < today).length;
+    const dueSoonCount = systemLogs.filter(s => {
+        if (!s.nextInspectionDate) return false;
+        const d = new Date(s.nextInspectionDate);
+        const diff = Math.ceil((d.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+        return diff >= 0 && diff <= 30;
+    }).length;
+
+    builder.doc.setFontSize(settings.fontSizeSmall);
+    const summaryText = `סה"כ מערכות: ${systemLogs.length} | באיחור בדיקה: ${overdueCount} | לבדיקה ב-30 יום: ${dueSoonCount}`;
+    builder.drawText(summaryText, builder.pageWidth - builder.margin, builder.yPos, { align: 'right' });
+    builder.yPos += 12;
+
+    // Helper to draw category separator band
+    const drawCategoryBanner = (label: string, count: number) => {
+        if (builder.yPos > builder.pageHeight - 65) {
+            builder.addPage();
+        } else {
+            builder.yPos += 6;
+        }
+        const bannerHeight = 18;
+        builder.doc.setFillColor(241, 245, 249);
+        builder.doc.roundedRect(builder.margin, builder.yPos, builder.pageWidth - builder.margin * 2, bannerHeight, 3, 3, 'F');
+        builder.doc.setDrawColor(203, 213, 225);
+        builder.doc.roundedRect(builder.margin, builder.yPos, builder.pageWidth - builder.margin * 2, bannerHeight, 3, 3, 'S');
+
+        builder.doc.setFontSize(builder.settings.fontSizeMedium);
+        builder.doc.setTextColor(15, 23, 42);
+        builder.drawText(`${label} (${count} מערכות)`, builder.pageWidth - builder.margin - 8, builder.yPos + 12, { align: 'right', fontStyle: 'bold' });
+        builder.yPos += bannerHeight + 5;
+    };
+
+    // Group systems by category
+    const head = [['הערות', 'טכנאי', 'בדיקה הבאה', 'בדיקה אחרונה', 'סטטוס', 'שם המערכת']];
+    let renderedCount = 0;
+
+    for (const cat of SYSTEM_TYPE_CATEGORIES) {
+        const categoryLogs = systemLogs.filter(s => s.systemType === cat.type);
+        if (categoryLogs.length === 0) continue;
+
+        drawCategoryBanner(cat.label, categoryLogs.length);
+        renderedCount += categoryLogs.length;
+
+        const body = categoryLogs.map(s => [
+            s.notes || '-',
+            s.technicianName ? `${s.technicianName} ${s.technicianPhone ? `(${s.technicianPhone})` : ''}` : '-',
+            s.nextInspectionDate ? formatDate(s.nextInspectionDate) : '-',
+            s.lastInspectionDate ? formatDate(s.lastInspectionDate) : '-',
+            s.status || 'תקין',
+            s.title
+        ]);
+
+        builder.drawTable(head, body, {
+            columnStyles: {
+                5: { fontStyle: 'bold' }
+            }
+        });
+    }
+
+    // Fallback if any logs had an unregistered type
+    const remainingLogs = systemLogs.filter(s => !SYSTEM_TYPE_CATEGORIES.some(c => c.type === s.systemType));
+    if (remainingLogs.length > 0) {
+        drawCategoryBanner('תשתיות נוספות', remainingLogs.length);
+        const body = remainingLogs.map(s => [
+            s.notes || '-',
+            s.technicianName ? `${s.technicianName} ${s.technicianPhone ? `(${s.technicianPhone})` : ''}` : '-',
+            s.nextInspectionDate ? formatDate(s.nextInspectionDate) : '-',
+            s.lastInspectionDate ? formatDate(s.lastInspectionDate) : '-',
+            s.status || 'תקין',
+            s.title
+        ]);
+        builder.drawTable(head, body, {
+            columnStyles: {
+                5: { fontStyle: 'bold' }
+            }
+        });
+    }
+
+    if (systemLogs.length === 0) {
+        builder.doc.setFontSize(settings.fontSizeMedium);
+        builder.drawText('אין מערכות תשתית רשומות עבור מבנה זה.', builder.pageWidth / 2, builder.yPos + 30, { align: 'center' });
+    }
+
+    builder.finalize(title, fileName);
+};
+
+export const generateAllBuildingSystemsPdf = async ({ settings, projects, systemLogs }: { settings: AppSettings, projects: Project[], systemLogs: BuildingSystemLog[] }) => {
+    const builder = await createPdfBuilderWithLogo(settings);
+    builder.yPos = 100;
+
+    builder.drawHeading('דוח כלל מערכות התשתית והבטיחות במבנים');
+
+    const projectMap = new Map<string, string>();
+    projects.forEach(p => projectMap.set(p.id, p.name));
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const overdueCount = systemLogs.filter(s => s.nextInspectionDate && new Date(s.nextInspectionDate) < today).length;
+
+    builder.doc.setFontSize(settings.fontSizeSmall);
+    const summaryText = `סה"כ מערכות: ${systemLogs.length} | באיחור בדיקה: ${overdueCount}`;
+    builder.drawText(summaryText, builder.pageWidth - builder.margin, builder.yPos, { align: 'right' });
+    builder.yPos += 12;
+
+    // Helper to draw category separator band
+    const drawCategoryBanner = (label: string, count: number) => {
+        if (builder.yPos > builder.pageHeight - 65) {
+            builder.addPage();
+        } else {
+            builder.yPos += 6;
+        }
+        const bannerHeight = 18;
+        builder.doc.setFillColor(241, 245, 249);
+        builder.doc.roundedRect(builder.margin, builder.yPos, builder.pageWidth - builder.margin * 2, bannerHeight, 3, 3, 'F');
+        builder.doc.setDrawColor(203, 213, 225);
+        builder.doc.roundedRect(builder.margin, builder.yPos, builder.pageWidth - builder.margin * 2, bannerHeight, 3, 3, 'S');
+
+        builder.doc.setFontSize(builder.settings.fontSizeMedium);
+        builder.doc.setTextColor(15, 23, 42);
+        builder.drawText(`${label} (${count} מערכות)`, builder.pageWidth - builder.margin - 8, builder.yPos + 12, { align: 'right', fontStyle: 'bold' });
+        builder.yPos += bannerHeight + 5;
+    };
+
+    const head = [['הערות', 'טכנאי', 'בדיקה הבאה', 'בדיקה אחרונה', 'סטטוס', 'בניין', 'שם המערכת']];
+
+    for (const cat of SYSTEM_TYPE_CATEGORIES) {
+        const categoryLogs = systemLogs.filter(s => s.systemType === cat.type);
+        if (categoryLogs.length === 0) continue;
+
+        drawCategoryBanner(cat.label, categoryLogs.length);
+
+        const body = categoryLogs.map(s => [
+            s.notes || '-',
+            s.technicianName ? `${s.technicianName} ${s.technicianPhone ? `(${s.technicianPhone})` : ''}` : '-',
+            s.nextInspectionDate ? formatDate(s.nextInspectionDate) : '-',
+            s.lastInspectionDate ? formatDate(s.lastInspectionDate) : '-',
+            s.status || 'תקין',
+            projectMap.get(s.buildingId) || 'כללי',
+            s.title
+        ]);
+
+        builder.drawTable(head, body, {
+            columnStyles: {
+                6: { fontStyle: 'bold' },
+                5: { fontStyle: 'bold' }
+            }
+        });
+    }
+
+    // Remaining logs if any
+    const remainingLogs = systemLogs.filter(s => !SYSTEM_TYPE_CATEGORIES.some(c => c.type === s.systemType));
+    if (remainingLogs.length > 0) {
+        drawCategoryBanner('תשתיות נוספות', remainingLogs.length);
+        const body = remainingLogs.map(s => [
+            s.notes || '-',
+            s.technicianName ? `${s.technicianName} ${s.technicianPhone ? `(${s.technicianPhone})` : ''}` : '-',
+            s.nextInspectionDate ? formatDate(s.nextInspectionDate) : '-',
+            s.lastInspectionDate ? formatDate(s.lastInspectionDate) : '-',
+            s.status || 'תקין',
+            projectMap.get(s.buildingId) || 'כללי',
+            s.title
+        ]);
+        builder.drawTable(head, body, {
+            columnStyles: {
+                6: { fontStyle: 'bold' },
+                5: { fontStyle: 'bold' }
+            }
+        });
+    }
+
+    if (systemLogs.length === 0) {
+        builder.doc.setFontSize(settings.fontSizeMedium);
+        builder.drawText('אין מערכות תשתית רשומות במערכת.', builder.pageWidth / 2, builder.yPos + 30, { align: 'center' });
+    }
+
+    builder.finalize('כל מערכות המבנים', 'all_building_systems');
 };

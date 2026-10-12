@@ -4,7 +4,7 @@ import { AppSettings, PdfTemplateStyle, CloudFile } from '../types';
 import { useToast } from '../contexts/ToastContext';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import Modal from '../components/common/Modal';
-import { PDF_TEMPLATE_STYLES, PDF_THEMES, DEFAULT_SETTINGS, COLOR_PALETTES } from '../constants';
+import { PDF_TEMPLATE_STYLES, PDF_THEMES, DEFAULT_SETTINGS, COLOR_PALETTES, GEMINI_MODELS } from '../constants';
 import { optimizeImage } from '../services/imageService';
 import * as dbService from '../services/dbService';
 import { formatDateTime } from '../utils/dateFormatter';
@@ -13,6 +13,8 @@ import { useGoogleDrive } from '../contexts/GoogleDriveContext';
 import CollapsibleSection from '../components/common/CollapsibleSection';
 import { ExclamationTriangleIcon, ArrowPathIcon } from '../components/icons/FeedbackIcons';
 import SyncProgressModal from '../components/common/SyncProgressModal';
+import { useTranslation, getTranslation } from '../src/i18n';
+import { setActiveGeminiModel } from '../services/aiService';
 
 const SettingsPage: React.FC = () => {
   const { settings, isLoading: isLoadingSettings, updateSettings, resetSettings } = useSettings();
@@ -147,6 +149,9 @@ const SettingsPage: React.FC = () => {
 
   const handleSaveSettings = async () => {
     try {
+      if (localSettings.geminiModel) {
+        setActiveGeminiModel(localSettings.geminiModel);
+      }
       await updateSettings(localSettings, fontFileToUpload || undefined);
       setFontFileToUpload(null); // Reset after saving
       addToast('ההגדרות נשמרו בהצלחה', 'success');
@@ -511,6 +516,53 @@ const SettingsPage: React.FC = () => {
                     {localSettings.companyInfo.logo && <img src={localSettings.companyInfo.logo} alt="Company Logo Preview" className="mt-2 h-16 w-auto border p-1 rounded-md"/>}
                 </div>
             </div>
+        </CollapsibleSection>
+
+        {/* Gemini AI Settings Section */}
+        <CollapsibleSection title={<h3 className="text-lg font-medium text-slate-800 dark:text-neutral-100 flex items-center gap-2">הגדרות בינה מלאכותית (Gemini AI) ✨</h3>} defaultOpen={true}>
+          <div className="space-y-4">
+            <p className="text-sm text-slate-600 dark:text-slate-300">
+              בחר את מודל ה-Gemini AI שישמש לייבוא חכם מקבצים ומסמכים (PDF, תמונות, Excel, Word), פענוח תמונות ליקויים, ניתוח דוחות וכל תכונות ה-AI באפליקציה:
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {GEMINI_MODELS.map(model => {
+                const isSelected = (localSettings.geminiModel || 'gemini-3.8-flash') === model.id;
+                return (
+                  <button
+                    key={model.id}
+                    type="button"
+                    onClick={() => {
+                      setLocalSettings(prev => ({ ...prev, geminiModel: model.id }));
+                      setActiveGeminiModel(model.id);
+                      addToast(`דגם ה-AI הוגדר ל-${model.name}`, 'info');
+                    }}
+                    className={`p-4 rounded-2xl border text-right transition-all flex flex-col justify-between gap-2.5 text-start cursor-pointer ${
+                      isSelected
+                        ? 'border-sky-500 bg-sky-50/90 dark:bg-sky-950/40 shadow-sm ring-2 ring-sky-400/50'
+                        : 'border-slate-200 dark:border-neutral-700 hover:border-slate-300 dark:hover:border-neutral-600 bg-white dark:bg-neutral-800'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between w-full">
+                      <div className="flex items-center gap-2.5">
+                        <span className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${isSelected ? 'border-sky-600 bg-sky-600' : 'border-slate-300 dark:border-neutral-600'}`}>
+                          {isSelected && <span className="w-1.5 h-1.5 rounded-full bg-white"></span>}
+                        </span>
+                        <span className="font-bold text-sm text-slate-900 dark:text-slate-100">{model.name}</span>
+                      </div>
+                      {model.badge && (
+                        <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-sky-100 text-sky-700 dark:bg-sky-900/60 dark:text-sky-300">
+                          {model.badge}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed pr-6.5">
+                      {model.description}
+                    </p>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
         </CollapsibleSection>
 
         <CollapsibleSection title={<h3 className="text-lg font-medium">הגדרות PDF כלליות</h3>} defaultOpen={false}>

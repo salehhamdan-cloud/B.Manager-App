@@ -3,11 +3,10 @@ import * as dbService from '../services/dbService';
 import { ReportWithContext, Project, Report, Problem, AnnotatedImage, ProblemSeverity, Supplier } from '../types';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import { useToast } from '../contexts/ToastContext';
-import { PlusIcon, MagnifyingGlassIcon } from '../components/icons/ActionIcons';
+import { DocumentChartBarIcon, PlusIcon, MagnifyingGlassIcon, SparklesIcon } from '../components/icons';
 import Modal from '../components/common/Modal';
 import { generateId } from '../utils/idGenerator';
 import CollapsibleSection from '../components/common/CollapsibleSection';
-import { SparklesIcon } from '../components/icons/AiIcons';
 import { convertPdfToImages, convertPdfToText } from '../utils/pdfUtils';
 import * as aiService from '../services/aiService.ts';
 import { useSettings } from '../contexts/SettingsContext';
@@ -17,10 +16,10 @@ import ReportItem from '../components/ReportItem';
 const ControlButton: React.FC<{ label: string; value: string; currentValue: string; onClick: (value: string) => void }> = ({ label, value, currentValue, onClick }) => (
     <button
         onClick={() => onClick(value)}
-        className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
+        className={`px-3 py-1.5 text-xs font-semibold rounded-xl transition-all ${
             currentValue === value 
-            ? 'bg-sky-600 text-white shadow' 
-            : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+            ? 'bg-blue-600 text-white shadow-2xs' 
+            : 'bg-white dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white border border-neutral-200 dark:border-neutral-700'
         }`}
     >
         {label}
@@ -374,37 +373,42 @@ const AllReportsPage: React.FC = () => {
             )}
             <input type="file" ref={aiPdfInputRef} onChange={handleAiFileChange} accept="application/pdf" className="hidden" />
 
-            {/* Header & Controls */}
-            <div className="bg-white border border-slate-200/90 rounded-3xl p-5 sm:p-6 shadow-xs flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+            {/* 1. Page Header Banner */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 rounded-2xl bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 shadow-2xs mb-6">
                  <div>
-                    <h1 className="text-xl sm:text-2xl font-black text-slate-800 tracking-tight flex items-center gap-2">
-                        כל הדוחות
-                        <span className="text-xs bg-sky-50 text-sky-800 border border-sky-100 px-2.5 py-0.5 rounded-full font-bold">
+                    <h1 className="text-xl font-bold text-neutral-900 dark:text-neutral-100 flex items-center gap-2">
+                        <DocumentChartBarIcon className="w-6 h-6" />
+                        כל הדוחות וסקרי המבנה
+                        <span className="text-xs bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200/60 dark:border-blue-900/40 px-2.5 py-0.5 rounded-full font-bold">
                             {filteredAndSortedReports.length} דוחות
                         </span>
                     </h1>
-                    <p className="text-xs text-slate-500 mt-0.5">דוחות תחזוקה, פרוטוקולי מסירה ובדיקות תקופתיות</p>
+                    <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
+                        דוחות תחזוקה, פרוטוקולי מסירה, סקרי מבנה ובדיקות תקופתיות.
+                    </p>
                  </div>
                 <div className="flex items-center gap-2 flex-wrap">
                     <button
                         onClick={handleAiImportClick}
-                        className="bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200/80 font-bold py-2.5 px-4 rounded-xl shadow-2xs flex items-center transition-colors text-xs"
+                        className="flex items-center justify-center gap-1.5 px-4 py-2.5 text-xs font-semibold text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-950/60 border border-purple-200/60 dark:border-purple-900/40 rounded-xl hover:bg-purple-100 dark:hover:bg-purple-900/60 transition shadow-2xs active:scale-95"
                     >
-                        <SparklesIcon className="w-4 h-4 me-1.5 rtl:ml-1.5 text-purple-600"/> הוסף דוח (AI)
+                        <SparklesIcon className="w-4 h-4 text-purple-600 dark:text-purple-400"/>
+                        <span>הוסף דוח (AI)</span>
                     </button>
                     <button
                         onClick={() => setIsAddModalOpen(true)}
-                        className="btn-primary text-xs font-bold py-2.5 px-4 shadow-sm flex items-center"
+                        className="flex items-center justify-center gap-1.5 px-4 py-2.5 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 active:scale-95 rounded-xl shadow-xs transition"
                     >
-                        <PlusIcon className="w-4 h-4 me-1.5 rtl:ml-1.5" />
-                        הוסף דוח
+                        <PlusIcon className="w-4 h-4 text-white" />
+                        <span>הוסף דוח</span>
                     </button>
                 </div>
             </div>
 
-            <div className="bg-white p-5 rounded-3xl shadow-xs border border-slate-200/90 mb-6 space-y-4">
+            {/* Filter Controls Card */}
+            <div className="bg-white dark:bg-neutral-900 p-5 rounded-2xl shadow-2xs border border-neutral-200 dark:border-neutral-800 mb-6 space-y-4">
                  <div>
-                    <label className="block text-xs font-bold text-slate-600 mb-2">סוג מסמך / סקר:</label>
+                    <label className="block text-xs font-bold text-neutral-700 dark:text-neutral-300 mb-2">סוג מסמך / סקר:</label>
                     <div className="flex flex-wrap gap-1.5">
                         <ControlButton label="הכל" value="all" currentValue={reportTypeFilter} onClick={setReportTypeFilter as any} />
                         <ControlButton label="📋 סקרי מבנה ובדק בית" value="survey" currentValue={reportTypeFilter} onClick={setReportTypeFilter as any} />
@@ -413,7 +417,7 @@ const AllReportsPage: React.FC = () => {
                     </div>
                 </div>
                  <div>
-                    <label className="block text-xs font-bold text-slate-600 mb-2">סנן לפי קבוצה:</label>
+                    <label className="block text-xs font-bold text-neutral-700 dark:text-neutral-300 mb-2">סנן לפי קבוצה:</label>
                     <div className="flex flex-wrap gap-1.5">
                         <ControlButton label="הכל" value="" currentValue={groupFilter} onClick={setGroupFilter} />
                         <ControlButton label="ללא קבוצה" value="__none__" currentValue={groupFilter} onClick={setGroupFilter} />
@@ -421,7 +425,7 @@ const AllReportsPage: React.FC = () => {
                     </div>
                 </div>
                 <div>
-                    <label className="block text-xs font-bold text-slate-600 mb-2">מיין לפי:</label>
+                    <label className="block text-xs font-bold text-neutral-700 dark:text-neutral-300 mb-2">מיין לפי:</label>
                     <div className="flex flex-wrap gap-1.5">
                         <ControlButton label="תאריך (החדש ביותר)" value="date-desc" currentValue={sortOrder} onClick={setSortOrder} />
                         <ControlButton label="תאריך (הישן ביותר)" value="date-asc" currentValue={sortOrder} onClick={setSortOrder} />
@@ -429,16 +433,16 @@ const AllReportsPage: React.FC = () => {
                         <ControlButton label="כותרת (א-ת)" value="title-asc" currentValue={sortOrder} onClick={setSortOrder} />
                     </div>
                 </div>
-                 <div className="relative pt-1">
-                    <span className="absolute inset-y-0 left-0 flex items-center pl-3.5 pt-1 rtl:right-0 rtl:pl-0 rtl:pr-3.5 pointer-events-none">
-                        <MagnifyingGlassIcon className="w-4 h-4 text-slate-400" />
-                    </span>
+
+                {/* 2. Search Input */}
+                <div className="relative max-w-md pt-1">
+                    <MagnifyingGlassIcon className="absolute top-3 left-3 w-4 h-4 text-neutral-400 rtl:right-3 rtl:left-auto" />
                     <input
-                        type="search"
+                        type="text"
                         placeholder="חיפוש דוחות לפי כותרת, תיאור או שם בניין..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
-                        className="w-full pl-10 pr-4 py-2.5 rtl:pr-10 rtl:pl-4 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 transition-all"
+                        className="w-full pl-9 pr-3 rtl:pr-9 rtl:pl-3 py-2 text-xs border border-neutral-200 dark:border-neutral-800 rounded-xl bg-white dark:bg-neutral-900 text-neutral-900 dark:text-neutral-100 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
                     />
                 </div>
             </div>

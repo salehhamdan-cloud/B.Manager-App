@@ -7,16 +7,17 @@ import LoadingSpinner from '../components/common/LoadingSpinner';
 import Modal from '../components/common/Modal';
 import { generateId } from '../utils/idGenerator';
 import { useToast } from '../contexts/ToastContext';
-import { PlusIcon, ArrowDownTrayIcon } from '../components/icons/ActionIcons';
+import { BuildingOfficeIcon, PlusIcon, MagnifyingGlassIcon, ArrowDownTrayIcon } from '../components/icons';
 import ImageUploader from '../components/common/ImageUploader';
+import { useTranslation } from '../src/i18n';
 
 const SortButton: React.FC<{ label: string; value: string; currentSort: string; setSort: (value: string) => void }> = ({ label, value, currentSort, setSort }) => (
     <button
         onClick={() => setSort(value)}
         className={`px-3 py-1.5 text-xs font-bold rounded-xl transition-all ${
             currentSort === value 
-            ? 'bg-white shadow-xs text-sky-800 font-black border border-slate-200/80' 
-            : 'text-slate-600 hover:bg-white/60'
+            ? 'bg-white dark:bg-neutral-900 shadow-2xs text-blue-600 dark:text-blue-400 font-bold border border-neutral-200 dark:border-neutral-700' 
+            : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-200 hover:bg-white/60 dark:hover:bg-neutral-800/60'
         }`}
     >
         {label}
@@ -25,9 +26,11 @@ const SortButton: React.FC<{ label: string; value: string; currentSort: string; 
 
 
 const BuildingsListPage: React.FC = () => {
+  const { t } = useTranslation();
   const [projects, setProjects] = useState<Project[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
+  const [searchTerm, setSearchTerm] = useState<string>('');
   const [sortOrder, setSortOrder] = useState<string>('createdAt-desc');
   const [newProject, setNewProject] = useState<Partial<Project>>({
     name: '',
@@ -64,15 +67,23 @@ const BuildingsListPage: React.FC = () => {
   }, [fetchAllData]);
 
   const sortOptions = useMemo(() => [
-        { value: 'createdAt-desc', label: 'החדש ביותר' },
-        { value: 'createdAt-asc', label: 'הישן ביותר' },
-        { value: 'updatedAt-desc', label: 'עודכן לאחרונה' },
-        { value: 'name-asc', label: 'שם (א-ת)' },
-        { value: 'name-desc', label: 'שם (ת-א)' },
-  ], []);
+        { value: 'createdAt-desc', label: t('sortCreated', 'החדש ביותר') },
+        { value: 'createdAt-asc', label: t('sortCreated', 'הישן ביותר') },
+        { value: 'updatedAt-desc', label: t('sortUpdated', 'עודכן לאחרונה') },
+        { value: 'name-asc', label: t('sortName', 'שם') },
+  ], [t]);
 
   const sortedProjects = useMemo(() => {
-    const sorted = [...projects];
+    let filtered = [...projects];
+    if (searchTerm.trim()) {
+      const q = searchTerm.trim().toLowerCase();
+      filtered = filtered.filter(p => 
+        p.name.toLowerCase().includes(q) || 
+        (p.address && p.address.toLowerCase().includes(q)) ||
+        (p.managerName && p.managerName.toLowerCase().includes(q))
+      );
+    }
+    const sorted = filtered;
     const [key, direction] = sortOrder.split('-');
 
     sorted.sort((a, b) => {
@@ -230,47 +241,49 @@ const BuildingsListPage: React.FC = () => {
   }));
 
   return (
-    <div className="space-y-6 animate-fadeIn max-w-7xl mx-auto">
-      {/* Header & Controls */}
-      <div className="bg-white border border-slate-200/90 rounded-3xl p-5 sm:p-6 shadow-xs flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div className="flex items-center gap-3 flex-wrap">
-            <div>
-                <h1 className="text-xl sm:text-2xl font-black text-slate-800 tracking-tight flex items-center gap-2">
-                    רשימת בניינים
-                    <span className="text-xs bg-sky-50 text-sky-800 border border-sky-100 px-2.5 py-0.5 rounded-full font-bold">
-                        {sortedProjects.length} נכסים
-                    </span>
-                </h1>
-                <p className="text-xs text-slate-500 mt-0.5">ניהול כל הנכסים, פרטי קשר, קומות ודיירים</p>
-            </div>
+    <div className="space-y-6 animate-fade-in max-w-7xl mx-auto">
+      {/* 1. Page Header Banner */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 rounded-2xl bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 shadow-2xs">
+        <div>
+          <h1 className="text-xl font-bold text-neutral-900 dark:text-neutral-100 flex items-center gap-2">
+            <BuildingOfficeIcon className="w-6 h-6" />
+            {t('buildingsList', 'רשימת בניינים')}
+            <span className="text-xs bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200/60 dark:border-blue-900/40 px-2.5 py-0.5 rounded-full font-bold">
+              {sortedProjects.length} {t('propertiesCount', 'נכסים')}
+            </span>
+          </h1>
+          <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
+            {t('managePropertiesSubtitle', 'ניהול כל הנכסים, פרטי קשר, קומות, מערכות ודיירים.')}
+          </p>
         </div>
 
-        <div className="flex items-center gap-2 flex-wrap w-full md:w-auto justify-between md:justify-end">
-            <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-2xl border border-slate-200/60 overflow-x-auto">
-                {sortOptions.map(opt => (
-                    <SortButton key={opt.value} label={opt.label} value={opt.value} currentSort={sortOrder} setSort={setSortOrder} />
-                ))}
-            </div>
+        <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-1 bg-neutral-100 dark:bg-neutral-800 p-1 rounded-xl border border-neutral-200/60 dark:border-neutral-700/60 overflow-x-auto">
+            {sortOptions.map(opt => (
+              <SortButton key={opt.value} label={opt.label} value={opt.value} currentSort={sortOrder} setSort={setSortOrder} />
+            ))}
+          </div>
 
-            <div className="flex items-center gap-2">
-                <button
-                    onClick={handleImportClick}
-                    disabled
-                    className="btn-secondary text-xs py-2 px-3 opacity-50 cursor-not-allowed"
-                    title="ייבוא פרויקט בודד אינו נתמך כרגע. לייבוא גיבוי מלא, עבור למסך ההגדרות."
-                >
-                    <ArrowDownTrayIcon className="w-4 h-4 me-1 rtl:ml-1" />
-                    ייבוא
-                </button>
-                <button
-                    onClick={() => setIsModalOpen(true)}
-                    className="btn-primary text-xs font-bold py-2.5 px-4 shadow-sm flex items-center"
-                >
-                    <PlusIcon className="w-4 h-4 me-1 rtl:ml-1" />
-                    הוסף בניין
-                </button>
-            </div>
+          <button
+            onClick={() => setIsModalOpen(true)}
+            className="flex items-center justify-center gap-1.5 px-4 py-2.5 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 active:scale-95 rounded-xl shadow-xs transition"
+          >
+            <PlusIcon className="w-4 h-4 text-white" />
+            <span>{t('newBuilding', 'הוסף בניין')}</span>
+          </button>
         </div>
+      </div>
+
+      {/* 2. Search Input */}
+      <div className="relative max-w-md">
+        <MagnifyingGlassIcon className="absolute top-2.5 left-3 w-4 h-4 text-neutral-400 rtl:right-3 rtl:left-auto pointer-events-none" />
+        <input
+          type="text"
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          placeholder={t('searchBuildings', 'חפש בניין לפי שם, כתובת, מנהל...')}
+          className="w-full pl-9 pr-3 rtl:pr-9 rtl:pl-3 py-2 text-xs border border-neutral-200 dark:border-neutral-800 rounded-xl bg-white dark:bg-neutral-900 text-neutral-900 dark:text-neutral-100 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+        />
       </div>
 
       <input
@@ -281,16 +294,18 @@ const BuildingsListPage: React.FC = () => {
         accept=".json,application/json"
       />
 
+      {/* 3. Responsive 3-Column Grid */}
+
       {sortedProjects.length === 0 ? (
-        <div className="text-center py-16 bg-white rounded-3xl shadow-xs border border-slate-200/90 p-8">
-            <div className="w-16 h-16 mx-auto mb-3 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-400">
-                <PlusIcon className="w-8 h-8" />
+        <div className="text-center py-16 bg-white dark:bg-neutral-900 rounded-2xl shadow-2xs border border-neutral-200 dark:border-neutral-800 p-8">
+            <div className="w-16 h-16 mx-auto mb-3 rounded-2xl bg-neutral-50 dark:bg-neutral-800 flex items-center justify-center text-neutral-400">
+                <BuildingOfficeIcon className="w-8 h-8" />
             </div>
-            <h3 className="text-lg font-bold text-slate-800">אין בניינים להצגה</h3>
-            <p className="text-slate-500 text-xs mt-1">התחל על ידי הוספת בניין חדש או ייבוא נתונים חכם ב-AI.</p>
+            <h3 className="text-lg font-bold text-neutral-900 dark:text-neutral-100">{t('noBuildingsFound', 'אין בניינים להצגה')}</h3>
+            <p className="text-neutral-500 dark:text-neutral-400 text-xs mt-1">{t('noSystemsFoundPrompt', 'התחל על ידי הוספת בניין חדש או ייבוא נתונים חכם ב-AI.')}</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
           {sortedProjects.map(project => (
             <BuildingItem key={project.id} project={project} onDelete={handleDeleteProject} />
           ))}
@@ -300,56 +315,56 @@ const BuildingsListPage: React.FC = () => {
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="הוספת בניין חדש" size="lg">
         <form onSubmit={handleSubmitNewProject} className="space-y-4">
             <div>
-                <label htmlFor="project-name" className="block text-xs font-bold text-slate-700 mb-1.5">שם הבניין*</label>
-                <input type="text" id="project-name" name="name" value={newProject.name || ''} onChange={handleInputChange} required className="w-full text-xs font-medium bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 transition-all"/>
+                <label htmlFor="project-name" className="block text-xs font-semibold text-neutral-800 dark:text-neutral-200 mb-1.5">שם הבניין*</label>
+                <input type="text" id="project-name" name="name" value={newProject.name || ''} onChange={handleInputChange} required className="w-full text-xs font-medium bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3.5 py-2.5 text-neutral-900 dark:text-neutral-100 focus:outline-hidden focus:ring-2 focus:ring-blue-500 transition-all"/>
             </div>
             <div>
-                <label htmlFor="project-address" className="block text-xs font-bold text-slate-700 mb-1.5">כתובת</label>
-                <input type="text" id="project-address" name="address" value={newProject.address || ''} onChange={handleInputChange} className="w-full text-xs font-medium bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 transition-all"/>
+                <label htmlFor="project-address" className="block text-xs font-semibold text-neutral-800 dark:text-neutral-200 mb-1.5">כתובת</label>
+                <input type="text" id="project-address" name="address" value={newProject.address || ''} onChange={handleInputChange} className="w-full text-xs font-medium bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3.5 py-2.5 text-neutral-900 dark:text-neutral-100 focus:outline-hidden focus:ring-2 focus:ring-blue-500 transition-all"/>
             </div>
             <div>
-                <label htmlFor="project-clientInfo" className="block text-xs font-bold text-slate-700 mb-1.5">פרטי לקוח</label>
-                <textarea id="project-clientInfo" name="clientInfo" value={newProject.clientInfo || ''} onChange={handleInputChange} rows={3} className="w-full text-xs font-medium bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 transition-all"/>
+                <label htmlFor="project-clientInfo" className="block text-xs font-semibold text-neutral-800 dark:text-neutral-200 mb-1.5">פרטי לקוח</label>
+                <textarea id="project-clientInfo" name="clientInfo" value={newProject.clientInfo || ''} onChange={handleInputChange} rows={3} className="w-full text-xs font-medium bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3.5 py-2.5 text-neutral-900 dark:text-neutral-100 focus:outline-hidden focus:ring-2 focus:ring-blue-500 transition-all"/>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                  <div>
-                    <label htmlFor="numberOfFloors" className="block text-xs font-bold text-slate-700 mb-1.5">קומות</label>
-                    <input type="number" id="numberOfFloors" name="numberOfFloors" value={newProject.numberOfFloors || ''} onChange={handleInputChange} className="w-full text-xs font-medium bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 transition-all"/>
+                    <label htmlFor="numberOfFloors" className="block text-xs font-semibold text-neutral-800 dark:text-neutral-200 mb-1.5">קומות</label>
+                    <input type="number" id="numberOfFloors" name="numberOfFloors" value={newProject.numberOfFloors || ''} onChange={handleInputChange} className="w-full text-xs font-medium font-mono bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3.5 py-2.5 text-neutral-900 dark:text-neutral-100 focus:outline-hidden focus:ring-2 focus:ring-blue-500 transition-all"/>
                 </div>
                 <div>
-                    <label htmlFor="buildingArea" className="block text-xs font-bold text-slate-700 mb-1.5">שטח (מ"ר)</label>
-                    <input type="number" id="buildingArea" name="buildingArea" value={newProject.buildingArea || ''} onChange={handleInputChange} className="w-full text-xs font-medium bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 transition-all"/>
+                    <label htmlFor="buildingArea" className="block text-xs font-semibold text-neutral-800 dark:text-neutral-200 mb-1.5">שטח (מ"ר)</label>
+                    <input type="number" id="buildingArea" name="buildingArea" value={newProject.buildingArea || ''} onChange={handleInputChange} className="w-full text-xs font-medium font-mono bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3.5 py-2.5 text-neutral-900 dark:text-neutral-100 focus:outline-hidden focus:ring-2 focus:ring-blue-500 transition-all"/>
                 </div>
                  <div>
-                    <label htmlFor="parkingSpots" className="block text-xs font-bold text-slate-700 mb-1.5">חניות</label>
-                    <input type="number" id="parkingSpots" name="parkingSpots" value={newProject.parkingSpots || ''} onChange={handleInputChange} className="w-full text-xs font-medium bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 transition-all"/>
+                    <label htmlFor="parkingSpots" className="block text-xs font-semibold text-neutral-800 dark:text-neutral-200 mb-1.5">חניות</label>
+                    <input type="number" id="parkingSpots" name="parkingSpots" value={newProject.parkingSpots || ''} onChange={handleInputChange} className="w-full text-xs font-medium font-mono bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3.5 py-2.5 text-neutral-900 dark:text-neutral-100 focus:outline-hidden focus:ring-2 focus:ring-blue-500 transition-all"/>
                 </div>
             </div>
-             <div className="pt-4 border-t border-slate-100">
-                <h3 className="text-xs font-bold text-slate-800 mb-3">פרטי מנהל בניין</h3>
+             <div className="pt-4 border-t border-neutral-100 dark:border-neutral-800">
+                <h3 className="text-xs font-bold text-neutral-900 dark:text-neutral-100 mb-3">פרטי מנהל בניין</h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
-                        <label htmlFor="managerName" className="block text-xs font-bold text-slate-700 mb-1.5">שם מנהל</label>
-                        <input type="text" id="managerName" name="managerName" value={newProject.managerName || ''} onChange={handleInputChange} className="w-full text-xs font-medium bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 transition-all" />
+                        <label htmlFor="managerName" className="block text-xs font-semibold text-neutral-800 dark:text-neutral-200 mb-1.5">שם מנהל</label>
+                        <input type="text" id="managerName" name="managerName" value={newProject.managerName || ''} onChange={handleInputChange} className="w-full text-xs font-medium bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3.5 py-2.5 text-neutral-900 dark:text-neutral-100 focus:outline-hidden focus:ring-2 focus:ring-blue-500 transition-all" />
                     </div>
                     <div>
-                        <label htmlFor="managerPhone" className="block text-xs font-bold text-slate-700 mb-1.5">טלפון</label>
-                        <input type="tel" id="managerPhone" name="managerPhone" value={newProject.managerPhone || ''} onChange={handleInputChange} className="w-full text-xs font-medium bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 transition-all" />
+                        <label htmlFor="managerPhone" className="block text-xs font-semibold text-neutral-800 dark:text-neutral-200 mb-1.5">טלפון</label>
+                        <input type="tel" id="managerPhone" name="managerPhone" value={newProject.managerPhone || ''} onChange={handleInputChange} className="w-full text-xs font-medium font-mono bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3.5 py-2.5 text-neutral-900 dark:text-neutral-100 focus:outline-hidden focus:ring-2 focus:ring-blue-500 transition-all" />
                     </div>
                     <div className="sm:col-span-2">
-                        <label htmlFor="managerEmail" className="block text-xs font-bold text-slate-700 mb-1.5">אימייל</label>
-                        <input type="email" id="managerEmail" name="managerEmail" value={newProject.managerEmail || ''} onChange={handleInputChange} className="w-full text-xs font-medium bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 transition-all" />
+                        <label htmlFor="managerEmail" className="block text-xs font-semibold text-neutral-800 dark:text-neutral-200 mb-1.5">אימייל</label>
+                        <input type="email" id="managerEmail" name="managerEmail" value={newProject.managerEmail || ''} onChange={handleInputChange} className="w-full text-xs font-medium bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3.5 py-2.5 text-neutral-900 dark:text-neutral-100 focus:outline-hidden focus:ring-2 focus:ring-blue-500 transition-all" />
                     </div>
                 </div>
             </div>
 
-            <div className="pt-4 border-t border-slate-100">
+            <div className="pt-4 border-t border-neutral-100 dark:border-neutral-800">
                 <ImageUploader images={imagesForUploader} onImagesChange={handleProjectImagesChange} maxImages={5} allowNotes={false} />
             </div>
 
-            <div className="flex justify-end space-x-2 rtl:space-x-reverse pt-3 border-t border-slate-100">
-                <button type="button" onClick={() => setIsModalOpen(false)} className="btn-secondary text-xs">ביטול</button>
-                <button type="submit" className="btn-primary text-xs font-bold">צור בניין</button>
+            <div className="flex justify-end gap-3 pt-3 border-t border-neutral-100 dark:border-neutral-800">
+                <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 font-medium text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-xl text-xs">ביטול</button>
+                <button type="submit" className="px-5 py-2 font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl shadow-xs text-xs">צור בניין</button>
             </div>
         </form>
       </Modal>

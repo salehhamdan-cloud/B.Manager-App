@@ -1,5 +1,6 @@
 import React from 'react';
 import { createRoot } from 'react-dom/client';
+import './index.css';
 import AppWrapper from './App';
 import { SettingsProvider } from './contexts/SettingsContext';
 import { ToastProvider } from './contexts/ToastContext';
@@ -25,3 +26,12 @@ root.render(
     </ToastProvider>
   </React.StrictMode>
 );
+
+// Register PWA Service Worker
+if ('serviceWorker' in navigator && window.location.protocol.startsWith('http')) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/service-worker.js').catch((err) => {
+      console.warn('PWA service worker registration skipped or failed:', err);
+    });
+  });
+}
