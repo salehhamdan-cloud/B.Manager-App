@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>B.Manager App</title>
+  <meta name="description" content="B.Manager is a React application for managing buildings, reports, and problems, including PDF generation and image uploads. Built with TypeScript and Tailwind CSS.">
+  <meta property="og:title" content="B.Manager App">
+  <meta property="og:description" content="B.Manager is a React application for managing buildings, reports, and problems, including PDF generation and image uploads. Built with TypeScript and Tailwind CSS.">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%230284c7'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='central' text-anchor='middle' font-size='60' font-family='sans-serif' font-weight='bold' fill='white'%3EBM%3C/text%3E%3C/svg%3E">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Arabic:wght@400;500;600;700&family=Noto+Sans+Hebrew:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="manifest" href="./assets/manifest-BwACVLOS.json">
+  <meta name="theme-color" content="#0f172a">
+  <style>
+    body {
+      font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    [dir="rtl"] {
+      font-family: 'Noto Sans Arabic', 'Noto Sans Hebrew', 'Plus Jakarta Sans', system-ui, sans-serif;
+    }
+    
+    .font-mono-numbers {
+      font-family: 'JetBrains Mono', monospace;
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* Primary Brand / Action Accent (bg-blue-600 hover:bg-blue-700 text-white rounded-xl) */
+    .btn-primary {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      padding: 0.625rem 1.25rem;
+      min-height: 44px;
+      font-size: 0.875rem;
+      font-weight: 600;
+      color: #ffffff;
+      background-color: #2563eb;
+      border-radius: 0.75rem;
+      box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+      transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+      cursor: pointer;
+      user-select: none;
+      white-space: nowrap;
+    }
+    .btn-primary:hover {
+      background-color: #1d4ed8;
+      box-shadow: 0 4px 12px 0 rgba(37, 99, 235, 0.25);
+      transform: translateY(-1px);
+    }
+    .btn-primary:active {
+      transform: translateY(0);
+      box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    }
+    .btn-primary:focus-visible {
+      outline: none;
+      box-shadow: 0 0 0 2px #3b82f6;
+    }
+    .btn-primary:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
+    }
+
+    .btn-secondary {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      padding: 0.625rem 1.25rem;
+      min-height: 44px;
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: #171717;
+      background: #ffffff;
+      border: 1px solid #e5e5e5;
+      border-radius: 0.75rem;
+      box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.02);
+      transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+      cursor: pointer;
+      user-select: none;
+      white-space: nowrap;
+    }
+    .dark .btn-secondary {
+      background: #171717;
+      color: #f5f5f5;
+      border-color: #262626;
+    }
+    .btn-secondary:hover {
+      background: #f5f5f5;
+      color: #0a0a0a;
+      border-color: #d4d4d4;
+    }
+    .dark .btn-secondary:hover {
+      background: #262626;
+      color: #ffffff;
+      border-color: #404040;
+    }
+    .btn-secondary:active {
+      transform: translateY(0);
+    }
+
+    .btn-danger {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      padding: 0.625rem 1.25rem;
+      min-height: 44px;
+      font-size: 0.875rem;
+      font-weight: 600;
+      color: #e11d48;
+      background: #fff1f2;
+      border: 1px solid #ffe4e6;
+      border-radius: 0.75rem;
+      transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+      cursor: pointer;
+      user-select: none;
+      white-space: nowrap;
+    }
+    .dark .btn-danger {
+      color: #fda4af;
+      background: rgba(76, 5, 25, 0.6);
+      border-color: rgba(159, 18, 57, 0.6);
+    }
+    .btn-danger:hover {
+      background: #ffe4e6;
+      color: #be123c;
+    }
+
+    /* Modern input class */
+    .input-class {
+      display: block;
+      width: 100%;
+      border-radius: 0.75rem;
+      border: 1px solid #e5e5e5;
+      background-color: #ffffff;
+      padding: 0.625rem 0.875rem;
+      font-size: 0.875rem;
+      color: #171717;
+      box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.02);
+      transition: border-color 0.15s ease, box-shadow 0.15s ease;
+      outline: none;
+    }
+    .dark .input-class {
+      background-color: #171717;
+      border-color: #262626;
+      color: #f5f5f5;
+    }
+    .input-class:focus {
+      border-color: #2563eb;
+      box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2);
+    }
+    .input-class::placeholder {
+      color: #a3a3a3;
+    }
+
+    /* Custom scrollbar for better aesthetics */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #f8fafc;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #94a3b8;
+    }
+
+    /* Animation Keyframes */
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .animate-fade-in {
+      animation: fadeIn 0.2s ease-out forwards;
+    }
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(12px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes scaleIn {
+        from { opacity: 0; transform: scale(0.97); }
+        to { opacity: 1; transform: scale(1.0); }
+    }
+    @keyframes popIn {
+        0% { opacity: 0; transform: scale(0.95); }
+        80% { opacity: 1; transform: scale(1.02); }
+        100% { opacity: 1; transform: scale(1.0); }
+    }
+    @keyframes shimmer {
+      0% { transform: translateX(100%); }
+      100% { transform: translateX(-100%); }
+    }
+    .animate-shimmer {
+      animation: shimmer 1.8s infinite linear;
+    }
+  </style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.0/fabric.min.js"></script>
+<script>
+  // Ensure any old service worker caches that might have cached mismatched React chunks are cleared
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.getRegistrations().then(function(registrations) {
+      for (var reg of registrations) {
+        reg.update();
+      }
+    });
+  }
+  if ('caches' in window) {
+    caches.keys().then(function(names) {
+      for (var name of names) {
+        if (name.includes('bmanager-cache')) {
+          caches.delete(name);
+        }
+      }
+    });
+  }
+</script>
+  <script type="module" crossorigin src="./assets/index-BI-KQnmO.js"></script>
+  <link rel="stylesheet" crossorigin href="./assets/index-BISa7WB5.css">
+<link rel="manifest" href="./manifest.webmanifest"><script id="vite-plugin-pwa:register-sw" src="./registerSW.js"></script></head>
+<body class="bg-neutral-50 dark:bg-neutral-950 text-neutral-900 dark:text-neutral-100 antialiased selection:bg-blue-600 selection:text-white">
+  <div id="root"></div>
+</body>
+</html>
